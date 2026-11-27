@@ -16,7 +16,7 @@ jobs:
 
       - name: Aucun plugin commercial dans le dépôt public
         run: |
-          for p in kx-compliance kx-iso27001 kx-gdpr kx-nis2 kx-dora kx-guild kx-observability; do
+          for p in kx-azure-devops kx-compliance kx-iso27001 kx-gdpr kx-nis2 kx-dora kx-guild kx-observability; do
             if [ -e "plugins/$p" ]; then
               echo "::error::Le plugin commercial $p ne doit pas être dans ce dépôt."
               exit 1

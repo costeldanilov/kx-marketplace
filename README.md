@@ -24,7 +24,7 @@
 | `kx-kit-netfx-nuget` | Kit pour les bibliothèques NuGet .NET Framework | Apache-2.0 |
 | `kx-kit-netfx-microservice` | Kit pour les microservices .NET Framework | Apache-2.0 |
 
-Les experts de forge (Azure DevOps, puis GitHub) arrivent ensuite. Les modules `kx-compliance`, `kx-guild` et `kx-observability` sont des offres commerciales. Ils ne sont pas dans ce dépôt.
+L'expert GitHub (`kx-github`) arrive ensuite, en open source. L'expert Azure DevOps (`kx-azure-devops`) et les modules `kx-compliance`, `kx-guild` et `kx-observability` sont des offres commerciales. Ils ne sont pas dans ce dépôt.
 
 ## Installer
 
