@@ -116,7 +116,7 @@ Restent à fixer, sans bloquer le démarrage :
 | Poids du score de risque (D6) ; points et seuils du poids du ticket (D93) | §3.4, §3.6 | Mesurés sur les premiers tickets |
 | Budgets par ticket, par exécution et par jour | §8.6 | Mesurés sur les premiers tickets |
 
-Les points marqués **[NV]** (83 dans ce document) se vérifient pendant la réalisation, chacun avant d'écrire le code qui en dépend.
+Les points marqués **[NV]** (82 dans ce document) se vérifient pendant la réalisation, chacun avant d'écrire le code qui en dépend.
 
 
 ## 2. Contrat avec le dépôt cible
@@ -1427,18 +1427,12 @@ Nom : `scribe` (D67, précédemment `plume`).
   - **rien ne part sans validation humaine**, et jamais en mode `agent` ;
   - aucun extrait de code, de ticket, de chemin, de nom de client ni de secret du dépôt cible. Le développeur peut en ajouter lui-même, en le voyant ;
   - destination fixée par le plugin (son dépôt public), jamais lue dans le dépôt cible ou dans un texte non fiable.
-- **Canal (D57, D101, D110)** : une issue sur le dépôt GitHub public (§8.5), déposée par le **serveur MCP KymexIA** : l'utilisateur n'a besoin ni de jeton ni de compte GitHub, et n'ouvre pas GitHub. Sans accès au serveur, la skill retombe sur une URL d'issue pré-remplie, ou sur le texte à copier. Les clients des plugins payants ont un canal de support à part, par le même serveur.
-- **Serveur MCP KymexIA (D110)** :
-  - un serveur MCP distant, hébergé par KymexIA, déclaré par `kx-core` ; il expose un seul outil, `feedback.submit`, qui reçoit le texte validé et rend l'adresse de l'issue créée ;
-  - il crée l'issue avec l'identité d'une GitHub App du marketplace, limitée au dépôt public et au droit « issues » ; aucun jeton n'est demandé à l'utilisateur ;
-  - il ne suit aucune instruction contenue dans le texte : il le traite comme une donnée, repasse le filtre de secrets et refuse un texte qui en contient (`precondition_failed`) ;
-  - il pose les labels `feedback` et `triage` ; la demande entre dans le flux comme un ticket `backlog`, que les mainteneurs trient ;
+- **Canal public (D57, D101, D110)** : une issue sur le dépôt GitHub public du plugin, créée **sous l'identité GitHub de l'utilisateur** : le jeton qu'il a déjà sur son poste (`gh auth login`) ou son connecteur GitHub. Un compte GitHub est donc requis. Aucun serveur intermédiaire : l'utilisateur n'ouvre pas GitHub, et l'issue porte son login.
+  - c'est GitHub qui applique les limites et la modération (quotas de l'API, blocage d'un compte, gestion du dépôt) ;
   - l'utilisateur est prévenu, avant l'envoi, que l'issue sera **publique** ;
-  - limites contre l'abus : nombre de demandes par poste et par jour, taille maximale ; aucune donnée personnelle conservée par le serveur ;
-  - **[NV]** déclaration d'un serveur MCP distant dans un plugin (`mcpServers`, transport HTTP) et son authentification sans compte ;
-  - **Hébergement (D111)** : Azure, dans une région de l'Union européenne (par exemple France Central ou West Europe), données et sauvegardes comprises ;
-  - **Aucun journal des demandes (D111)** : l'issue publique est la seule trace. La limite contre l'abus utilise un compteur temporaire, en mémoire, effacé au bout de 24 heures ; les journaux techniques de la plateforme Azure sont réduits au minimum et ne gardent pas l'adresse IP ;
-  - **[À DÉCIDER]** identification légère du poste, sans compte.
+  - la skill pose les labels `feedback` et `triage` ; la demande entre dans le flux comme un ticket `backlog`, que les mainteneurs trient ;
+  - sans jeton ni connecteur : la skill ouvre une URL d'issue pré-remplie, ou rend le texte à copier.
+- **Clients des extensions payantes** : un canal de support séparé, réservé aux clients ; il n'est pas décrit dans ce document.
 
 #### `time-tracker` — relevé du temps passé (D58)
 
@@ -2126,7 +2120,7 @@ Règles du dépôt public :
 
 Retour des utilisateurs (`feedback`) :
 
-- **Public** : une issue sur le dépôt GitHub, déposée par le serveur MCP KymexIA après validation de l'utilisateur, sans jeton ni compte GitHub (D110). Repli : une URL d'issue pré-remplie que l'utilisateur envoie lui-même ;
+- **Public** : une issue sur le dépôt GitHub, créée sous l'identité GitHub de l'utilisateur, après sa validation ; un compte GitHub est requis (D110). Repli : une URL d'issue pré-remplie ;
 - **Clients des plugins payants** : un canal de support à part, **[À DÉCIDER]** ;
 - les failles de sécurité ne passent pas par une issue publique : `SECURITY.md` donne un canal privé.
 
