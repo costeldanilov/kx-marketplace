@@ -73,7 +73,7 @@ Conséquences :
 3. **Automatiser la chaîne** de production et de livraison, sauf les décisions réservées à l'humain.
 4. **Poser des contrôles en couches**, avant et après la PR : garde-fous déterministes, relectures par des agents en contexte neuf, audit sécurité et ISO depuis la pipeline.
 5. **Guider l'attention du relecteur** : un score de risque montre où regarder. Le relecteur ne lit pas chaque diff avec la même attention.
-6. **Rendre le ticket vérifiable** : critères d'acceptation complets, numérotés, en ASD-STE100, pour que l'agent de vérification puisse les contrôler un par un.
+6. **Rendre le ticket vérifiable** : critères d'acceptation complets, numérotés, dans la langue contrôlée du profil (`scribe`), pour que l'agent de vérification puisse les contrôler un par un.
 7. **Produire la preuve** : chaque étape laisse une trace exploitable en audit.
 
 ### 1.4 Principes non négociables
@@ -116,7 +116,7 @@ Restent à fixer, sans bloquer le démarrage :
 | Poids du score de risque (D6) ; points et seuils du poids du ticket (D93) | §3.4, §3.6 | Mesurés sur les premiers tickets |
 | Budgets par ticket, par exécution et par jour | §8.6 | Mesurés sur les premiers tickets |
 
-Les points marqués **[NV]** (81 dans ce document) se vérifient pendant la réalisation, chacun avant d'écrire le code qui en dépend.
+Les points marqués **[NV]** (83 dans ce document) se vérifient pendant la réalisation, chacun avant d'écrire le code qui en dépend.
 
 
 ## 2. Contrat avec le dépôt cible
@@ -219,6 +219,10 @@ Source unique de configuration (D23). Lu par les skills, les agents, les scripts
 schema: kx.profile/1
 
 kits: [netfx-microservice]        # kits de stack déclarés (§2.12), exemple
+
+language:                        # langue de travail du dépôt (D105)
+  work: fr                       # fr | en : tickets, critères, scénarios, ADR, commentaires des agents
+  controlled: ste-fr             # ste-en (vise ASD-STE100) | ste-fr (français technique simplifié, D106) | none
 
 repository:
   kind: application              # application | library | plugins | infrastructure
@@ -368,7 +372,7 @@ Règles communes à tous les experts :
 
 | Rôle | Type | Obligatoire à `ready` | Écrit par | Contenu |
 |---|---|---|---|---|
-| `acceptance_criteria` | Texte | Oui | Humain | Critères numérotés `AC-1`, `AC-2`…, en ASD-STE100 |
+| `acceptance_criteria` | Texte | Oui | Humain | Critères numérotés `AC-1`, `AC-2`…, dans la langue contrôlée du profil (`language.controlled`) |
 | `priority` | Entier | Oui | Humain | Priorité native |
 | `sensitive` | Booléen | Oui | Humain | Le ticket touche une zone sensible |
 | `iso27001` | Booléen | Non | Humain | Le ticket relève d'une exigence de sécurité |
@@ -531,7 +535,7 @@ Conception :
   | `coderabbit` | Le guide général en Markdown, déclaré dans `.coderabbit.yaml` par `filePatterns`, avec `reviews.auto_approvals.enabled: false` |
   | autre | Le guide général en Markdown ; l'adaptateur se décrit dans le profil |
 
-- **Contenu du guide** (en anglais, D63), court et autonome, car un bot peut ne pas ouvrir d'autres fichiers :
+- **Contenu du guide** (dans la langue de travail du profil, D105), court et autonome, car un bot peut ne pas ouvrir d'autres fichiers :
   1. le projet en quelques lignes, tiré des `description` d'`architecture/` et de `domain/` ;
   2. la carte du bundle : chaque dossier, son `type`, ce qu'il contient, son chemin ;
   3. les règles de relecture de `review/`, une ligne par règle : identifiant, phrase, chemins concernés ;
@@ -972,14 +976,14 @@ Points ouverts :
 - **Sorties** : le ticket créé ou mis à jour en `refinement` ; une copie dans le dossier du ticket.
 - **Opérations** : `ticket.get`, `ticket.create`, `ticket.apply`.
 - **Contrôles** :
-  - chaque critère est numéroté `AC-n`, en anglais ASD-STE100, et dit une seule chose vérifiable ;
+  - chaque critère est numéroté `AC-n`, écrit dans la langue contrôlée du profil, et dit une seule chose vérifiable ;
   - chaque critère déclare sa méthode de vérification ; selon le poids du ticket, il reçoit ses scénarios Given / When / Then (D92) ;
   - la skill propose le poids du ticket (§3.6) et un découpage si la classe est XL ;
   - chaque critère dit comment le vérifier (test, commande, observation) ;
   - `sensitive` est proposé à `true` si un chemin probable touche une zone ;
   - la skill ne passe jamais le ticket en `ready`.
 - **Erreurs** : identité membre de `agents` (`stopped` : un agent n'écrit pas les critères) ; ticket déjà en `ready` ou au-delà (`needs-human`).
-- Le contrôle de l'anglais simplifié des critères est délégué à la skill de rédaction contrôlée (§3.4, D54).
+- Le contrôle de la langue des critères est délégué à la skill de rédaction contrôlée `scribe` (§3.4, D54, D106).
 
 #### `ticket specify` — collecte omnicanale (D70)
 
@@ -1118,11 +1122,11 @@ Sinon, c'est une **décision locale** : elle reste dans `design.md`, avec sa rai
 
 #### Scénarios d'acceptation (BDD) (D92)
 
-Un critère `AC-n` en ASD-STE100 est une phrase, pas une preuve. Pour qu'un agent puisse boucler seul jusqu'au vert sans juger son propre travail, le critère reçoit des **scénarios** écrits avant le code et figés.
+Un critère `AC-n` en langue contrôlée est une phrase, pas une preuve. Pour qu'un agent puisse boucler seul jusqu'au vert sans juger son propre travail, le critère reçoit des **scénarios** écrits avant le code et figés.
 
 | Étape | Qui | Ce qui se passe |
 |---|---|---|
-| Spécifier | PO, Team Lead ou chef de projet, avec `ticket specify` et `scribe` | Chaque critère reçoit un ou plusieurs scénarios Given / When / Then, en ASD-STE100, dans `features/<ticket>/*.feature` (chemin du profil). Chaque scénario porte l'étiquette de son critère (`@AC-1`). |
+| Spécifier | PO, Team Lead ou chef de projet, avec `ticket specify` et `scribe` | Chaque critère reçoit un ou plusieurs scénarios Given / When / Then, dans la langue contrôlée du profil, dans `features/<ticket>/*.feature` (chemin du profil). Chaque scénario porte l'étiquette de son critère (`@AC-1`). |
 | Figer | Script `criteria-locked` | À `ready`, l'empreinte des fichiers `.feature` du ticket est notée avec celle des critères. Les modifier ensuite demande un nouveau passage par `ready`. |
 | Implémenter | Neo ou le développeur | Il écrit le code et les liaisons des étapes (Reqnroll, Playwright…). Il boucle en local jusqu'à ce que tous les scénarios du ticket passent. Cette boucle est un contrôle de l'auteur, pas une validation. |
 | Relire | `review`, Sherlock, le pair | Recherche des **étapes creuses** : liaison vide, assertion toujours vraie, système sous test remplacé par un faux, attente fixe à la place d'une vérification. |
@@ -1130,7 +1134,7 @@ Un critère `AC-n` en ASD-STE100 est une phrase, pas une preuve. Pour qu'un agen
 
 Règles :
 
-- **Format** : Gherkin ; mots-clés en anglais pour rester en STE ; une étape = une action ou un fait ; pas de détail d'écran (« click the blue button ») mais le comportement (« the user confirms the order »).
+- **Format** : Gherkin, dans la langue de travail du profil. En français, l'en-tête `# language: fr` donne les mots-clés Fonctionnalité, Scénario, Soit, Quand, Alors (**[NV]** prise en charge par Reqnroll et par l'outil de liaison choisi pour Playwright) ; une étape = une action ou un fait ; pas de détail d'écran (« click the blue button ») mais le comportement (« the user confirms the order »).
 - **Un critère, une méthode** : chaque `AC-n` déclare sa méthode de vérification : `scenario`, `test` (test unitaire ou d'intégration nommé), `manual` (testeur humain), `visual` (observation, jamais une réussite seule). Un critère sans preuve automatique reste « non vérifiable » pour Galileo.
 - **Neo ne modifie jamais un fichier `.feature` du ticket.** Un scénario faux ou irréalisable donne `needs-human` et un retour vers la spécification. Hook de garde et garde-fou `criteria-locked`.
 - **Neo peut ajouter des tests** (unitaires, d'intégration) ; ils ne remplacent pas un scénario.
@@ -1360,11 +1364,15 @@ Faits vérifiés (A44, A45, A46) :
 - **Contrôles** : identité humaine pour tout environnement autre que `dev` ; blocage si l'audit de `kx-compliance` a déclaré des non-conformités.
 - **[NV]** Approbations et contrôles des environnements Azure Pipelines. À vérifier en section 6.
 
-#### `scribe` — rédaction en anglais simplifié ASD-STE100 (D54, D55, D67)
+#### `scribe` — rédaction en langue contrôlée, anglais ou français (D54, D55, D67, D106)
 
 Nom : `scribe` (D67, précédemment `plume`).
 
-- **Rôle** : tout ce qui touche à l'anglais simplifié ASD-STE100, partout où le dépôt l'exige : critères d'acceptation, specs, et tout texte que le profil désigne.
+- **Rôle** : tout ce qui touche à la langue contrôlée, partout où le dépôt l'exige : critères d'acceptation, scénarios, specs, et tout texte que le profil désigne. La langue suit le profil (`language.controlled`).
+- **Deux variantes (D106)** :
+  - `ste-en` : vise ASD-STE100 (faits et limites ci-dessous) ;
+  - `ste-fr` : **français technique simplifié**, une adaptation française. Mêmes principes d'écriture que STE (phrases courtes, un sens par mot, voix active, une instruction par phrase), écrits dans nos propres mots, et un **dictionnaire de mots français approuvés** constitué par nous. Ce dictionnaire n'est pas une traduction de celui de l'ASD, protégé par le droit d'auteur : il part du vocabulaire courant et s'enrichit des termes du dépôt (`domain/`). Il est livré par `kx-core` dans les références de `scribe`, et un dépôt l'étend par `.knowledge/conventions/`. Il ne porte pas le nom « ASD-STE100 », marque de l'ASD ;
+  - **[NV]** Une langue contrôlée française existe dans l'aéronautique (« français rationalisé ») : statut, contenu et licence à vérifier avant de s'en inspirer.
 - **Plugin** : `kx-core`. Elle sert `ticket specify`, `review` (contrôle des critères et des specs touchés), et tout plugin qui rédige.
 - **Actions** :
   - `write` : rédige ou réécrit un texte en STE à partir d'une intention ;
@@ -1530,7 +1538,7 @@ Point de conception ouvert, lié à OKF v0.3 (D42) :
 
 - Poids du score de risque (D6), à mesurer pendant la réalisation.
 - Seuils de montée de niveau de Neo (spécification de `kx-guild`).
-- Contrôle d'ASD-STE100 : règles de forme en v1, outil dédié ensuite.
+- Contrôle de la langue contrôlée (anglais ou français) : règles de forme en v1, outil dédié ensuite.
 - Retour d'un ticket de `test` vers `doing` après un échec de vérification : transition et acteur.
 
 ### 3.6 Poids du ticket et niveau de cérémonie (D93)
@@ -2362,6 +2370,7 @@ Règles :
 ### E.1 Langue (D63, D64)
 
 - Tout le contenu des plugins est en anglais : skills, agents, descriptions, clés du profil, codes d'erreur, messages techniques, gabarits.
+- La **langue de travail du dépôt** se choisit dans le profil (`language.work`, D105) : tickets, critères, scénarios, ADR, commentaires des agents et guide des bots de relecture sont écrits dans cette langue. Les instructions des skills restent en anglais.
 - Les skills et agents répondent dans la langue du développeur.
 - Le dépôt public est en anglais et en français : `README.md` et `README.fr.md`, documentation en deux langues. L'anglais fait foi en cas d'écart.
 - Cette spécification reste en français. Une version anglaise suit avant la publication.
