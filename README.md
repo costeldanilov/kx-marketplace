@@ -30,8 +30,8 @@ Les experts de forge (Azure DevOps, puis GitHub) arrivent ensuite. Les modules `
 
 ```bash
 claude plugin marketplace add costeldanilov/kx-marketplace
-claude plugin install kx-core@kx
-claude plugin install kx-factory@kx
+claude plugin install kx-core@kymexia
+claude plugin install kx-factory@kymexia
 ```
 
 Le plugin ne contient rien de propre à un projet. Tout le contexte du dépôt cible vient de son bundle de connaissances et de la configuration du plugin.
