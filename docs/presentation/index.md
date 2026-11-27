@@ -24,29 +24,33 @@ Les équipes de développement, du solo-entrepreneur à la petite équipe de 3 �
 Un **marketplace** Claude Code est un catalogue de plugins qu'on ajoute une fois, puis dont on installe les plugins utiles. Celui-ci s'appelle `kymexia`. Chaque plugin a un rôle étroit et s'appuie sur le socle.
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Arial, Helvetica, sans-serif", "fontSize": "15px", "lineColor": "#94a3b8", "primaryTextColor": "#0f172a"}, "flowchart": {"nodeSpacing": 28, "rankSpacing": 44, "curve": "basis", "padding": 14}}}%%
 flowchart TB
-  subgraph open["Ouvert (Apache-2.0) : ce dépôt"]
-    core["kx-core<br/>socle : configuration du dépôt,<br/>dossier de connaissances, contrôles"]
-    factory["kx-factory<br/>le flux du ticket :<br/>spécifier, planifier, relire, livrer"]
-    github["kx-github<br/>expert GitHub"]
-    kits["kits de stack<br/>kx-kit-netfx…"]
-  end
-  subgraph paid["Extensions commerciales"]
-    ado["kx-azure-devops<br/>expert Azure DevOps"]
-    compliance["kx-compliance<br/>+ ISO 27001, RGPD, NIS2, DORA"]
-    guild["kx-guild<br/>les agents"]
-    obs["kx-observability<br/>la production"]
-  end
-  factory --> core
-  github --> core
+  kits["<b>Kits de stack</b><br/>.NET Framework…"]:::open
+  guild["<b>kx-guild</b><br/>les agents"]:::paid
+
+  github["<b>kx-github</b><br/>expert GitHub"]:::open
+  ado["<b>kx-azure-devops</b><br/>expert Azure DevOps"]:::paid
+  factory["<b>kx-factory</b><br/>le flux du ticket"]:::open
+  compliance["<b>kx-compliance</b><br/>conformité et preuves"]:::paid
+  obs["<b>kx-observability</b><br/>la production"]:::paid
+
+  core["<b>kx-core</b><br/>le socle commun"]:::base
+
   kits --> factory
-  ado --> core
-  compliance --> core
   guild --> factory
+  github --> core
+  ado --> core
+  factory --> core
+  compliance --> core
   obs --> core
+
+  classDef base fill:#0f172a,stroke:#0f172a,color:#ffffff
+  classDef open fill:#e0f2fe,stroke:#0284c7,stroke-width:1.5px,color:#0f172a
+  classDef paid fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#0f172a
 ```
 
-Une flèche signifie « s'appuie sur ».
+En bleu, les plugins ouverts, dans ce dépôt ; en orange, les extensions commerciales. Une flèche signifie « s'appuie sur ».
 
 - **`kx-core`, le socle.** Il lit la configuration du dépôt cible et son dossier de connaissances, et fournit les scripts de contrôle communs. Il ne contient rien de propre à un projet.
 - **`kx-factory`, le flux du ticket.** Les gestes du cycle complet, de la spécification à la livraison, avec des portes automatiques et une approbation toujours humaine.
