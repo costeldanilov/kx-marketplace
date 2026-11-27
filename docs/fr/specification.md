@@ -116,7 +116,7 @@ Restent à fixer, sans bloquer le démarrage :
 | Poids du score de risque (D6) ; points et seuils du poids du ticket (D93) | §3.4, §3.6 | Mesurés sur les premiers tickets |
 | Budgets par ticket, par exécution et par jour | §8.6 | Mesurés sur les premiers tickets |
 
-Les points marqués **[NV]** (83 dans ce document) se vérifient pendant la réalisation, chacun avant d'écrire le code qui en dépend.
+Les points marqués **[NV]** (82 dans ce document) se vérifient pendant la réalisation, chacun avant d'écrire le code qui en dépend.
 
 
 ## 2. Contrat avec le dépôt cible
@@ -497,7 +497,7 @@ Conséquences :
 - **D32 (décidé)** — un plugin par expert. Le lien avec `kx-factory` passe par le profil du dépôt. L'expert `fixture` reste dans `kx-factory` : pendant un eval, seul le plugin testé est chargé.
 - **Proposition liée à D32** : à l'installation, l'expert **dépose son programme dans le dépôt cible** (`.knowledge/factory/experts/<expert>/`), avec sa version et son empreinte. Raisons :
   - un plugin ne peut pas trouver le dossier d'un autre plugin ;
-  - le chemin est le même dans Claude Code, Codex, les CLI de Google et les pipelines ;
+  - le chemin est le même dans Claude Code, Codex, Antigravity CLI de Google et les pipelines ;
   - une pipeline peut appeler l'expert sans installer de plugin ;
   - une mise à jour de l'expert devient une PR du dépôt cible, donc relue et tracée ;
   - `doctor` compare l'empreinte déposée à celle de la version déclarée.
@@ -762,7 +762,7 @@ Skills (page lue jusqu'au caractère 100 000 sur 118 106) :
 - **[V]** Avec `claude -p`, seule la première skill de la ligne est chargée.
 - **[V]** Bonnes pratiques d'Anthropic (A55) : corps de `SKILL.md` sous 500 lignes, découpé en fichiers de référence à l'approche de cette limite ; références à un seul niveau depuis `SKILL.md` (une référence lue depuis une autre peut n'être lue qu'en partie) ; table des matières en tête de toute référence de plus de 100 lignes ; `description` de 1 024 caractères au plus, à la troisième personne, qui dit ce que fait la skill et quand l'utiliser ; `name` de 64 caractères au plus, minuscules, chiffres et tirets ; au moins trois evals, essayées avec Haiku, Sonnet et Opus.
 - Les deux limites de la description ne se confondent pas : 1 024 caractères est la limite du standard (refus à l'envoi vers claude.ai ou l'API) ; 1 536 caractères est la coupure de Claude Code dans sa liste. La règle du marketplace est la plus stricte : 1 024.
-- **[NV]** Comportement de Codex et des CLI de Google devant une clé hors standard.
+- **[NV]** Comportement de Codex et d'Antigravity CLI devant une clé hors standard.
 
 Workflows :
 
@@ -778,7 +778,7 @@ Conclusions :
 - **D34 (décidé)** — une seule clé hors standard est autorisée dans une skill portable : `disable-model-invocation: true`, sur `release` et `deploy`. Dans Claude Code, ces skills ne partent que sur demande humaine. Toute autre extension est interdite dans les skills portables.
   - un script d'export retire la clé pour claude.ai et l'API ; `validate` vérifie qu'aucune autre clé hors standard n'est présente ;
   - la sûreté réelle reste côté serveur (pipeline, environnements, D62) : sans la clé, aucune release ni déploiement ne se fait pour autant par un agent ;
-  - **[NV]** comportement de Codex et des CLI de Google devant cette clé, à tester avant de déclarer la compatibilité.
+  - **[NV]** comportement de Codex et d'Antigravity CLI devant cette clé, à tester avant de déclarer la compatibilité.
 
 ### 3.2 Forme commune d'une skill
 
@@ -2021,7 +2021,7 @@ Faits vérifiés (A11, A12) :
 - **[V]** Anthropic ne prend pas en charge l'envoi de Claude Code vers des modèles non-Claude à travers une passerelle. C'est techniquement possible avec des passerelles tierces, sans support.
 - **[V]** Gemini 4 Neon (Google, 18 novembre 2026) : 3 $ / 15 $ par million de tokens en entrée / sortie. Claude Opus 5.5 : 4 $ / 20 $. L'écart de prix au token est de 25 %, pas de 50 %. Le coût par tâche dépend du nombre de tokens consommés ; les mesures publiées se contredisent.
 - **[NV]** Le champ `model` d'un agent de plugin accepte une valeur venue de `userConfig`.
-- **[NV]** Portabilité du format des skills vers d'autres outils (Gemini CLI, Copilot, Codex).
+- **[NV]** Portabilité du format des skills vers d'autres outils (Antigravity CLI, Copilot, Codex).
 
 Trois niveaux de changement :
 
@@ -2044,15 +2044,17 @@ Décisions :
 - `kx-core` et `kx-factory` sont publiés en open source.
 - Les plugins payants viennent ensuite : `kx-compliance` avec le référentiel `kx-iso27001`, puis `kx-guild`, puis les autres référentiels.
 - GitHub est la première forge prise en charge, par un expert ouvert. Azure DevOps suit, dans l'offre payante (D100).
-- Les skills doivent être utilisables dans Claude Code, Codex, les CLI de Google, et d'autres outils.
+- Les skills doivent être utilisables dans Claude Code, Codex, Antigravity CLI de Google, et d'autres outils.
 - Le marketplace est le premier produit de l'éditeur.
 
 Faits vérifiés (A15 ; les détails par outil viennent de sources secondaires) :
 
 - **[V]** Agent Skills (`SKILL.md`) est un standard ouvert publié par Anthropic en décembre 2025, puis donné à l'Agentic AI Foundation. Plus de 70 plateformes l'ont intégré selon Anthropic.
-- **[NV]** Dossiers de découverte par outil (`.claude/skills`, `.agents/skills`, `.github/skills`, `.gemini/skills`) : sources secondaires, à vérifier dans chaque documentation officielle.
+- **[NV]** Dossiers de découverte par outil : `.agents/skills` est vérifié pour Antigravity (A66) ; `.claude/skills` pour Claude Code ; Codex et Copilot restent à vérifier dans leur documentation officielle.
 - **[NV]** Les manifestes de plugin, les hooks et les sous-agents diffèrent d'un outil à l'autre. Seule la skill est portable.
-- **[NV]** État du CLI de Google : Gemini CLI et Antigravity CLI coexistent selon des sources secondaires.
+- **[V]** Google a remplacé Gemini CLI par **Antigravity CLI** (commande `agy`), lancé avec Antigravity 2.0 en mai 2026 ; Gemini CLI a cessé de servir les comptes gratuits et Pro le 18 juin 2026 (A66).
+- **[V]** Antigravity (application, CLI, IDE) charge les skills au format `SKILL.md`, dans `<dépôt>/.agents/skills/<skill>/`, et connaît aussi des plugins (`agy plugin install`) (A66).
+- **[V]** Google a lancé en novembre 2026 le modèle **Gemini 4 Neon** dans Antigravity (A67). Ses performances annoncées dépendent fortement du harnais : à mesurer sur nos propres evals de niveau 2, pas à reprendre des annonces.
 
 Deux couches :
 
@@ -2074,7 +2076,7 @@ Niveaux de prise en charge proposés :
 | Niveau | Outils | Engagement |
 |---|---|---|
 | 1 | Claude Code | Testé par la suite d'evals à chaque version |
-| 2 | Codex, CLI de Google | Skills chargées et exécutées ; essai manuel documenté par version |
+| 2 | Codex (OpenAI), Antigravity CLI (Google) | Skills chargées et exécutées ; essai manuel documenté par version |
 | 3 | Autres outils du standard | Aucun engagement |
 
 Limites à dire dans la documentation publique :
@@ -2365,6 +2367,8 @@ Règles :
 - A63. A REST API for GitHub Projects, sub-issues improvements, and more (GitHub Changelog, 2025-09-11) — https://github.blog/changelog/2025-09-11-a-rest-api-for-github-projects-sub-issues-improvements-and-more/
 - A64. REST API endpoints for sub-issues — https://docs.github.com/en/rest/issues/sub-issues ; REST API support for issue types (GitHub Changelog, 2025-03-18) — https://github.blog/changelog/2025-03-18-github-issues-projects-rest-api-support-for-issue-types
 - A65. REST API endpoints for Projects — https://docs.github.com/en/rest/projects/projects
+- A66. Google Antigravity — Agent skills — https://antigravity.google/docs/skills ; Antigravity 2.0 et CLI (TechCrunch, 2026-05-19) — https://techcrunch.com/2026/05/19/google-launches-antigravity-2-0-with-an-updated-desktop-app-and-cli-tool/
+- A67. Gemini 4 Neon in Google Antigravity — https://antigravity.google/blog/gemini-4-neon-in-google-antigravity/
 
 
 ## Annexe E — Nommage et langue (référence unique)
