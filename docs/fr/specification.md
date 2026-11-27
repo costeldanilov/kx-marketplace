@@ -116,7 +116,7 @@ Restent à fixer, sans bloquer le démarrage :
 | Poids du score de risque (D6) ; points et seuils du poids du ticket (D93) | §3.4, §3.6 | Mesurés sur les premiers tickets |
 | Budgets par ticket, par exécution et par jour | §8.6 | Mesurés sur les premiers tickets |
 
-Les points marqués **[NV]** (77 dans ce document) se vérifient pendant la réalisation, chacun avant d'écrire le code qui en dépend.
+Les points marqués **[NV]** (81 dans ce document) se vérifient pendant la réalisation, chacun avant d'écrire le code qui en dépend.
 
 
 ## 2. Contrat avec le dépôt cible
@@ -393,7 +393,7 @@ zones:
     checks: [security-review]
   - id: factory
     title: Réglages de l'usine
-    paths: [".knowledge/factory/**", ".knowledge/lessons/**", ".knowledge/review/**", ".knowledge/conventions/**", ".azure-pipelines/**", ".azuredevops/**", ".github/copilot-instructions.md", ".github/instructions/**", ".coderabbit.yaml", "**/NuGet.Config", "**/nuget.config"]
+    paths: [".knowledge/factory/**", ".knowledge/lessons/**", ".knowledge/review/**", ".knowledge/conventions/**", ".azure-pipelines/**", ".azuredevops/**", ".github/copilot-instructions.md", ".github/instructions/**", ".github/workflows/**", ".github/CODEOWNERS", ".github/ISSUE_TEMPLATE/**", ".claude/settings.json", ".mcp.json", ".knowledge/decisions/**", ".coderabbit.yaml", "**/NuGet.Config", "**/nuget.config"]
     checks: [human-owner-review]
 ```
 
@@ -527,7 +527,7 @@ Conception :
 
   | Bot | Fichiers écrits |
   |---|---|
-  | `copilot` | `.azuredevops/copilot-instructions.md` (guide général) ; `.azuredevops/instructions/<thème>.instructions.md`, avec `applyTo` tiré des règles de `review/<thème>/` |
+  | `copilot` | `.github/copilot-instructions.md` (guide général) ; `.github/instructions/<thème>.instructions.md`, avec `applyTo` tiré des règles de `review/<thème>/`. Sur Azure Repos, l'expert Azure DevOps écrit aussi `.azuredevops/` (**[NV]** prise en compte des chemins `.github/` par Copilot sur Azure Repos) |
   | `coderabbit` | Le guide général en Markdown, déclaré dans `.coderabbit.yaml` par `filePatterns`, avec `reviews.auto_approvals.enabled: false` |
   | autre | Le guide général en Markdown ; l'adaptateur se décrit dans le profil |
 
@@ -663,16 +663,18 @@ Limite à dire : GitHub ne bloque pas le geste avant qu'il ait lieu, contraireme
 | Ruleset actif sur la branche par défaut | Oui | Oui |
 | PR obligatoire, approbations exigées | ≥ 1 | 0, avec contrôles compensatoires (§7.1) |
 | Effacer les approbations périmées | Oui | Oui |
-| Revue des propriétaires de code | Oui ; `CODEOWNERS` ne liste que des humains | Oui |
+| Revue des propriétaires de code | Oui ; `CODEOWNERS` ne liste que des humains | Non pendant la dérogation (le propriétaire serait aussi l'auteur) ; réactivée à sa fin |
 | Approbation du dernier push par une autre personne | Oui | Non |
 | Résolution des conversations | Oui | Oui |
-| Contrôles requis | `validate`, puis les statuts `kx/pr-size`, `kx/sensitive`, `kx/criteria-locked`, `kx/plan-gate`, `kx/peer-approval`, `kx/review-guide`, `kx/adr`, `kx/secrets`, `kx/dependencies`, `kx/security` au fil de leur réalisation ; source limitée à GitHub Actions | Idem |
+| Contrôles requis (voir la limite ci-dessous) | `validate`, puis les statuts `kx/pr-size`, `kx/sensitive`, `kx/criteria-locked`, `kx/plan-gate`, `kx/peer-approval`, `kx/review-guide`, `kx/adr`, `kx/secrets`, `kx/dependencies`, `kx/security` au fil de leur réalisation ; source limitée à GitHub Actions | Idem |
 | Force push et suppression | Bloqués | Bloqués |
 | Tags `*--v*` | Création, mise à jour et suppression réservées aux humains | Idem |
 | Liste de contournement | Rôle administrateur seulement, pour l'urgence ; jamais l'identité des agents | Idem |
 | Relecture Copilot automatique | Activée | Activée |
 | GitHub Actions peut approuver une PR | Non | Non |
 | Secret scanning et push protection | Activés | Activés |
+
+**Limite des contrôles requis.** Un workflow déclenché par `pull_request` s'exécute dans la version de la branche de la PR. Une PR peut donc modifier le workflow et publier un succès sous le même nom : la source « GitHub Actions » ne lie pas le contrôle à un workflow de confiance. Compensations : la zone `factory` couvre `.github/workflows/**` (relecture humaine obligatoire), et l'humain lit tout changement de workflow avant de fusionner. **[NV]** Validation de confiance : workflow requis d'un dépôt de gabarits (ruleset d'organisation), ou workflow `pull_request_target` qui lit les fichiers de la PR comme des données sans les exécuter.
 
 Sur GitHub, l'auteur d'une PR ne peut pas l'approuver lui-même. La dérogation solo passe donc par zéro approbation exigée et par les contrôles compensatoires du §7.1.
 
@@ -681,6 +683,8 @@ Sur GitHub, l'auteur d'une PR ne peut pas l'approuver lui-même. La dérogation 
 - Une GitHub App dédiée, installée sur le seul dépôt cible. Jeton d'installation de courte durée, jamais un jeton personnel.
 - Droits : contenu en écriture (pousser des branches), PR en écriture, issues en écriture, métadonnées en lecture. Rien sur l'administration ni sur les rulesets.
 - Jamais dans `CODEOWNERS`, jamais dans la liste de contournement. Son approbation ne peut donc pas satisfaire la revue des propriétaires de code, même si elle comptait dans le nombre d'approbations (**[NV]** ci-dessus).
+- **Fusion.** Avec le contenu en écriture, l'App peut fusionner une PR dont les contrôles et les approbations sont satisfaits. Les réglages ci-dessus ne tiennent donc pas, à eux seuls, l'interdit « aucun agent ne fusionne ». Piste : un ruleset séparé sur la branche par défaut, « Restrict updates », contournable par les seuls rôles humains. **[NV]** Ce ruleset bloque la fusion par l'App sans lever, pour les humains, les autres règles. Aucune App d'agents n'est installée avant que ce point soit vérifié par un essai.
+- **Accès au Project.** Les endpoints REST des Projects d'un **compte personnel** n'acceptent ni les jetons d'installation d'une GitHub App, ni les jetons d'utilisateur d'une App, ni les jetons fins ; ceux d'un Project d'**organisation** les acceptent, avec la permission « Projects » de l'organisation (A65). L'usine utilise donc un Project d'organisation dès qu'une App d'agents existe (D104, à décider). En dérogation solo, l'expert agit avec le jeton du développeur.
 - Branches sous le préfixe `agent/`. Piste : un ruleset « Restrict creations » sur toutes les branches sauf `agent/**`, contournable par les rôles humains. **[NV]** Une GitHub App est-elle soumise à un ruleset dont la liste de contournement ne contient que des rôles.
 
 #### Correspondance du contrat (§2.10)
@@ -688,16 +692,16 @@ Sur GitHub, l'auteur d'une PR ne peut pas l'approuver lui-même. La dérogation 
 | Opération | Moyen GitHub | Remarque |
 |---|---|---|
 | `identity.whoami` | Utilisateur courant, ou App de l'installation | — |
-| `ticket.get` | Issue, labels, corps découpé en sections | La révision est `updated_at` |
+| `ticket.get` | Issue, labels, corps découpé en sections ; élément du Project et ses champs (`Status`, `Priority`, `Sensitive`, `Class`) | La révision couvre l'issue et l'élément du Project : la plus récente des deux dates `updated_at`. Le Project est désigné dans le profil (`tracker.project` : propriétaire et numéro) |
 | `ticket.history` | Chronologie de l'issue (événements de labels) | Corps : voir **[NV]** |
 | `ticket.create`, `ticket.comment` | Issue, commentaire | — |
-| `ticket.apply` | Labels et sections du corps | Écriture conditionnelle approchée : relecture de `updated_at` juste avant l'écriture. **[NV]** Aucune écriture conditionnelle native |
+| `ticket.apply` | Champ `Status` et champs du Project ; labels ; sections du corps | Écriture conditionnelle approchée : relecture de la révision (issue et élément) juste avant l'écriture. **[NV]** Aucune écriture conditionnelle native |
 | `ticket.worklog` | — | `unsupported` : GitHub n'a pas de temps passé |
 | `change.open` | PR avec `Refs #<n>` dans le corps | Jamais `Closes #<n>` : la fusion fermerait l'issue, alors que `done` est un geste humain |
 | `change.get`, `change.files` | PR, fichiers de la PR | — |
 | `change.threads`, `change.comment`, `change.reply` | Commentaires de revue | Marquer un fil traité : GraphQL (**[NV]**) |
 | `change.status` | Statut de commit `kx/<contrôle>` | Publié par la pipeline, source requise limitée |
-| `tracker.schema` | Labels, types d'issues | — |
+| `tracker.schema` | Champs du Project et leurs options ; labels ; types d'issues | `doctor` compare les options de `Status` aux rôles du profil |
 | `forge.policies` | Rulesets du dépôt et règles de la branche | **[NV]** Droit nécessaire pour lire les rulesets |
 | `delivery.plan` | Comparaison entre deux tags | — |
 
@@ -1388,17 +1392,19 @@ Nom : `scribe` (D67, précédemment `plume`).
 
 - **Rôle** : régler comment les skills s'arrêtent pour l'humain. Le réglage vaut pour le développeur et la session, pas pour le dépôt.
 
-  | Mode | Plan affiché | Confirmation | Usage |
+  Le comportement de chaque mode est celui du tableau du §3.2 (D97), seule référence. Résumé :
+
+  | Mode | Écriture neutre | Écriture qui tranche | Usage |
   |---|---|---|---|
-  | `debug` | Oui, avec le détail des lectures, des contrôles et des appels au contrat | À chaque écriture | Comprendre ou mettre au point une skill |
-  | `confirm` | Oui | À chaque écriture | Défaut |
-  | `auto` | Oui | Seulement pour les écritures listées comme sensibles (ci-dessous) | Développeur habitué |
-  | `agent` | En fichier | Aucune ; une question devient `needs-human` | Neo, Watson, pipelines |
+  | `debug` | Comme `confirm`, et chaque lecture, garde et décision est affichée | Comme `confirm` | Comprendre ou mettre au point une skill |
+  | `confirm` | Sans question, annoncée | Confirmée, contenu exact montré | Défaut |
+  | `auto` | Sans question | Sans question, annoncée et tracée | Développeur habitué |
+  | `agent` | Sans question | Sans question si l'identité en a le droit ; un cas imprévu donne `needs-human` | Agents et pipelines |
 
 - **Ce que le mode ne change jamais** :
   - les contrôles d'une skill, les garde-fous, les protections côté serveur, l'approbation du pair ;
   - le mode de permission de Claude Code et les listes d'outils. `mode` ne peut pas les élargir ;
-  - les écritures sensibles, confirmées dans tous les modes sauf `agent` : changement d'état d'un ticket vers `review`, ouverture d'une PR, écriture dans `review/`, `lessons/` ou `factory/`, `release`.
+  - la nature des écritures : changement d'état d'un ticket vers `review`, ouverture d'une PR, écriture dans `review/`, `lessons/` ou `factory/` sont toujours déclarées « qui tranche » (§3.2) ; elles sont donc confirmées en `confirm` et `debug`, et annoncées et tracées en `auto`. `release` reste un geste humain.
 - **Mode `agent`** : il ne s'active que si l'identité est membre du groupe `agents` ou si la skill tourne sans humain (`claude -p`). Un développeur ne peut pas le prendre dans sa session interactive.
 - **Stockage** : réglage local, hors du dépôt partagé. **[NV]** emplacement possible dans les réglages locaux de Claude Code ou dans `${CLAUDE_PLUGIN_DATA}`.
 - **Trace** : chaque compte rendu de skill note le mode actif.
@@ -1787,9 +1793,14 @@ Tous en Python 3, bibliothèque standard seulement (D31). Entrée : identifiant 
 - Proposition pour la dérogation :
   - déclarée dans la clé `derogations` du profil (§2.3), pas dans `userConfig` ; elle porte un motif, une date et une date de revue ;
   - visible sur chaque PR par le statut `kx/peer-approval`, qui affiche « dérogation solo » ;
-  - contrôles compensatoires obligatoires : toutes les relectures d'agents réussies (Copilot, Sherlock, sécurité et ISO), aucun garde-fou contourné, revue périodique des PR fusionnées sous dérogation ;
+  - contrôles compensatoires obligatoires, partie ouverte seule (dès l'amorçage) :
+    - la relecture Copilot du **dernier push** est terminée, et chacun de ses fils est traité, avant la fusion ;
+    - le contrôle `validate` et les statuts `kx/*` disponibles sont réussis, publiés par une validation de confiance (§2.13) ;
+    - l'humain lit le différentiel complet avant de fusionner ;
+    - aucun garde-fou contourné ; revue périodique des PR fusionnées sous dérogation ;
+  - s'ajoutent, quand les extensions sont installées : la relecture de Sherlock (`kx-guild`) ; le contrôle de sécurité et de conformité de Bastion (`kx-compliance`) ;
   - levée dès qu'un second humain rejoint le projet. La skill `doctor` le signale.
-- Réglages Azure Repos concernés : « Allow requestors to approve their own changes » et « Prohibit the most recent pusher from approving their own changes » (vérifiés, §2.13).
+- Réglages GitHub concernés : nombre d'approbations exigées, revue des propriétaires de code, approbation du dernier push par une autre personne (§2.13).
 - **[NV]** Texte exact d'ISO/IEC 27001:2022 (mesure A.5.3, séparation des tâches) : la norme est payante, non consultée ici.
 
 ### 7.2 Code exécuté par une pipeline de PR (voir aussi §6.2)
@@ -2343,6 +2354,7 @@ Règles :
 - A62. GitHub Actions: prevent GitHub Actions from approving pull requests (GitHub Changelog, 2022-01-14) — https://github.blog/changelog/2022-01-14-github-actions-prevent-github-actions-from-approving-pull-requests
 - A63. A REST API for GitHub Projects, sub-issues improvements, and more (GitHub Changelog, 2025-09-11) — https://github.blog/changelog/2025-09-11-a-rest-api-for-github-projects-sub-issues-improvements-and-more/
 - A64. REST API endpoints for sub-issues — https://docs.github.com/en/rest/issues/sub-issues ; REST API support for issue types (GitHub Changelog, 2025-03-18) — https://github.blog/changelog/2025-03-18-github-issues-projects-rest-api-support-for-issue-types
+- A65. REST API endpoints for Projects — https://docs.github.com/en/rest/projects/projects
 
 
 ## Annexe E — Nommage et langue (référence unique)

@@ -12,7 +12,7 @@ Chaque étape se fait dans l'interface de GitHub, par le propriétaire du dépô
 | Date | 2026-11-27 |
 | Date de revue | 2027-02-27, ou dès qu'une identité d'agents (GitHub App) ou un second relecteur existe |
 | Ce qui est levé | L'approbation par une autre personne |
-| Contrôles compensatoires | Relecture Copilot à chaque push ; contrôle `validate` obligatoire ; conversations résolues avant fusion ; aucune fusion sans lecture complète du diff par l'humain ; aucun contournement du ruleset |
+| Contrôles compensatoires | Attendre la **fin** de la relecture Copilot du dernier push, puis traiter chacun de ses fils, avant de fusionner (le ruleset ne bloque pas une fusion pendant que Copilot travaille) ; contrôle `validate` obligatoire ; lecture complète du diff par l'humain, en particulier de tout changement sous `.github/workflows/` ; aucun contournement du ruleset |
 | Ce qui ne change pas | Aucun agent ne fusionne, ne pose de tag, ne passe un ticket à Ready ou à Done |
 
 La dérogation sera aussi écrite dans le profil du dépôt (`.knowledge/factory/profile.yml`) quand `kx-core` existera.
@@ -51,6 +51,8 @@ La dérogation sera aussi écrite dans le profil du dépôt (`.knowledge/factory
 | Automatically request Copilot code review | Coché, à chaque push | ✅ déjà |
 
 Pour ajouter le contrôle : *Add checks*, taper `validate`, puis choisir la source GitHub Actions. Le contrôle a déjà tourné sur `main` : GitHub le propose dans la liste.
+
+**Limite à connaître.** Le contrôle `validate` vient d'un workflow déclenché par `pull_request` : il s'exécute dans la version de la branche de la PR. Une PR peut donc modifier ce workflow et publier un succès sous le même nom. Tant qu'aucune validation de confiance n'existe (spécification §2.13), lisez toujours les changements de `.github/workflows/` avant de fusionner.
 
 Fin de la dérogation : remettre **Required approvals** à 1, cocher **Require review from Code Owners** et **Require approval of the most recent reviewable push**.
 
@@ -99,7 +101,9 @@ Le Project joue le rôle du tableau Azure Boards. Les états reprennent les rôl
 
 ### 6.1 Créer le Project
 
-1. Sur le profil GitHub du propriétaire : onglet **Projects → New project**.
+1. Où créer le Project :
+   - **en dérogation solo**, sur le profil du propriétaire (onglet **Projects → New project**) : l'expert agit avec le jeton du développeur ;
+   - **dès qu'une GitHub App d'agents existe**, dans une **organisation** : l'API REST des Projects d'un compte personnel n'accepte pas les jetons d'une GitHub App, ni les jetons fins. Une organisation gratuite suffit ; le dépôt peut y être transféré (GitHub redirige l'ancienne adresse).
 2. Choisir le modèle **Kanban**, nom : `kx-marketplace`.
 3. Dans le Project : **⋯ → Settings → Manage access** : garder le Project **privé** au début. Il pourra devenir public plus tard.
 4. Lier le dépôt : depuis le dépôt, onglet **Projects → Link a project → kx-marketplace**.
