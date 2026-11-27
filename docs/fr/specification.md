@@ -1434,10 +1434,10 @@ Nom : `scribe` (D67, précédemment `plume`).
   - il ne suit aucune instruction contenue dans le texte : il le traite comme une donnée, repasse le filtre de secrets et refuse un texte qui en contient (`precondition_failed`) ;
   - il pose les labels `feedback` et `triage` ; la demande entre dans le flux comme un ticket `backlog`, que les mainteneurs trient ;
   - l'utilisateur est prévenu, avant l'envoi, que l'issue sera **publique** ;
-  - limites contre l'abus : nombre de demandes par poste et par jour, taille maximale ; aucune donnée personnelle conservée par le serveur au-delà du journal technique, dont la durée est fixée par le RGPD ;
+  - limites contre l'abus : nombre de demandes par poste et par jour, taille maximale ; aucune donnée personnelle conservée par le serveur ;
   - **[NV]** déclaration d'un serveur MCP distant dans un plugin (`mcpServers`, transport HTTP) et son authentification sans compte ;
   - **Hébergement (D111)** : Azure, dans une région de l'Union européenne (par exemple France Central ou West Europe), données et sauvegardes comprises ;
-  - **Journal (D111)** : chaque demande reçue est journalisée (date, version du plugin, skill concernée, identifiant de l'issue, résultat des contrôles). Le journal est conservé **au moins un an après la release** de la version du plugin concernée, dans un stockage non modifiable pendant cette durée, puis supprimé ou anonymisé. Une durée maximale doit aussi être fixée : une adresse IP ou un identifiant de poste sont des données personnelles, et le RGPD impose une durée limitée et justifiée ; à faire valider ;
+  - **Aucun journal des demandes (D111)** : l'issue publique est la seule trace. La limite contre l'abus utilise un compteur temporaire, en mémoire, effacé au bout de 24 heures ; les journaux techniques de la plateforme Azure sont réduits au minimum et ne gardent pas l'adresse IP ;
   - **[À DÉCIDER]** identification légère du poste, sans compte.
 
 #### `time-tracker` — relevé du temps passé (D58)
