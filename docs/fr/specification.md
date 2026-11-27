@@ -1062,6 +1062,7 @@ Porte du plan (D75) :
 
 - En session, la validation est une confirmation, notée dans le dossier du ticket (qui, quand, empreinte du plan).
 - En mode tour de contrôle, Neo ouvre une **PR brouillon** qui ne contient que `design.md` et `plan.md`, et s'arrête. Le développeur valide depuis la forge, y compris depuis son téléphone. Neo reprend sur la même branche.
+- **Qui tranche** : le développeur qui porte le ticket valide le plan et répond aux décisions candidates. Au besoin, il demande l'avis du lead dev sur la PR brouillon du plan (relecteur demandé) ; le lead dev conseille, le développeur décide (D107).
 - Toute relecture part du plan : `review-pr` le montre en premier ; Sherlock compare le différentiel au plan et signale ce qui en sort.
 
 #### Décisions prises en cours de ticket et ADR (D90)
