@@ -1312,7 +1312,7 @@ Faits vérifiés (A44, A45, A46) :
   1. lit la PR, le ticket, les statuts et les fils existants ;
   2. résume le travail fait, en quelques lignes ;
   3. compare le différentiel au besoin : pour chaque critère `AC-n`, où il est traité et avec quelle preuve ; ce qui est dans le différentiel sans lien avec le ticket ;
-  4. calcule le score de risque par fichier et ordonne la lecture, du plus risqué au moins risqué ;
+  4. rassemble les **points de risque signalés** : constats de Sherlock et de `security-review`, remarques des bots, zones sensibles touchées, fichiers au score de risque élevé (D6). Le pair ne relit que ces points, du plus grave au moins grave ; le reste du différentiel est couvert par les relecteurs et les contrôles automatiques (D108) ;
   5. rappelle les constats écartés par l'auteur et les remarques de Copilot et des agents ;
   6. accompagne la lecture : le pair pose des questions, la skill montre le code concerné ;
   7. rédige avec le pair des notes à poster ; le pair valide chaque note ; la skill les poste en fils sur la PR.
@@ -1322,7 +1322,7 @@ Faits vérifiés (A44, A45, A46) :
   - la skill ne vote pas et ne recommande ni d'approuver ni de refuser. Elle dit où regarder et ce qui manque ;
   - chaque note est postée sous l'identité du pair, après sa validation, une par une ou en lot visible ;
   - l'auteur de la PR ne peut pas lancer `review-pr` sur sa propre PR (`stopped`), sauf dérogation solo ;
-  - un fichier sauté par le plan de lecture est listé comme « non lu », jamais comme « sans risque » ;
+  - un fichier sans point signalé est listé comme « non relu par le pair », jamais comme « sans risque » ; le pair peut toujours l'ouvrir ;
   - l'approbation se fait dans la forge, à la main.
 - **Score de risque** (D6) : calcul déterministe par un script. Entrées : zone sensible touchée, drapeaux du ticket, lignes modifiées, fichier neuf ou modifié, présence de tests liés, type de fichier. **[À DÉCIDER]** la formule et ses poids, par dépôt dans le profil.
 - **Erreurs** : PR sans ticket lié (`stopped`).
