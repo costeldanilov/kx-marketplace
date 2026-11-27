@@ -6,6 +6,10 @@
 
 *English summary: `kx` is a Claude Code plugin marketplace for an agentic software factory. Agents do the work; humans approve every merge, release and deployment.*
 
+## Découvrir en 10 minutes
+
+**[La présentation : du ticket au déploiement](docs/presentation/index.md)**. Qui fait quoi, un vrai ticket suivi de bout en bout, les contrôles automatiques, la conformité, et pourquoi l'humain garde la décision.
+
 > **État : 0.1.0, en construction.** Les plugins sont des squelettes. Ne les utilisez pas encore sur un dépôt de production.
 
 ## La règle de base
