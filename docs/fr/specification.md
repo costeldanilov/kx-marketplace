@@ -101,7 +101,7 @@ Conséquences :
 - Il ne remplace pas la relecture humaine : il la prépare et la cible.
 - Il ne certifie rien. Il produit des preuves ; l'auditeur conclut.
 - Il ne surveille pas la production en continu. Les incidents partent d'une alerte.
-- En v1, l'expert ouvert prend en charge GitHub. Azure DevOps suit, dans l'offre payante (D100) ; GitLab et Jira ne sont pas planifiés (§2.10).
+- En v1, l'expert ouvert prend en charge GitHub. Azure DevOps suit, dans l'offre payante (D100), puis GitLab (D109) ; Jira n'est pas planifié (§2.10).
 - Il ne contient aucune donnée d'un projet ou d'une entreprise.
 
 
@@ -483,7 +483,8 @@ Experts prévus :
 | `fixture` | Forge et tracker simulés dans des fichiers JSON locaux | v1 — sert aux evals, aux tests et aux démonstrations |
 | `github` | Forge et tracker | v1, ouvert — premier expert réel, sert au marketplace lui-même (D100, §2.13) |
 | `azure-devops` | Forge et tracker | Après `github`, dans l'offre payante (D100) |
-| `gitlab`, `jira` | À préciser | Non planifié |
+| `gitlab` | Forge et tracker | Après `azure-devops` (D109) ; diffusion, ouverte ou payante, à décider |
+| `jira` | Tracker seulement | Non planifié |
 
 Conformité d'un expert : il passe une suite de tests du contrat, la même pour tous. L'expert `fixture` est l'implémentation de référence.
 
