@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Signaler une faille de sécurité
+    url: https://github.com/costeldanilov/kx-marketplace/security/advisories/new
+    about: N'ouvrez pas d'issue publique. Utilisez le signalement privé de GitHub.
