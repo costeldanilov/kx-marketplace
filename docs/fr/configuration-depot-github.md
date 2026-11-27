@@ -56,22 +56,22 @@ Pour ajouter le contrôle : *Add checks*, taper `validate`, puis choisir la sour
 
 Fin de la dérogation : remettre **Required approvals** à 1, cocher **Require review from Code Owners** et **Require approval of the most recent reviewable push**.
 
-## 3. Ruleset des tags de version
+## 3. Ruleset des tags
 
 **Settings → Rules → Rulesets → New ruleset → New tag ruleset**
 
 | Réglage | Valeur |
 |---|---|
-| Ruleset name | `Version tags` |
+| Ruleset name | `Tags` |
 | Enforcement status | Active |
 | Bypass list | **Repository admin** : les mainteneurs humains, qui posent les tags |
-| Target tags | *Add target → Include by pattern* : `*--v*` |
+| Target tags | *Add target → Include all tags* : aucun tag n'échappe à la règle, quelle que soit sa forme |
 | Restrict creations | Coché |
 | Restrict updates | Coché |
 | Restrict deletions | Coché |
 | Block force pushes | Coché |
 
-Les tags `<plugin>--v<version>` servent à résoudre les dépendances entre plugins. Seul un humain les pose (D96).
+Aucun agent ne crée de tag, quel qu'il soit. Les tags de version ont la forme `<plugin>--v<version>` et servent à résoudre les dépendances entre plugins. Seul un humain les pose (D96).
 
 ## 4. Sécurité
 
@@ -145,10 +145,15 @@ Les critères d'acceptation et les décisions restent dans le corps de l'issue, 
 | Workflow | Réglage | Pourquoi |
 |---|---|---|
 | Item added to project | **Activé** : Status = Backlog | Tout ticket entre par le début |
-| Item closed | Activé : Status = Done | Seul un humain ferme une issue « completed » |
+| Item closed | **Désactivé** | Il traite aussi une fermeture « not planned » comme une livraison, alors que Done exige une release faite |
 | Pull request merged | **Désactivé** | Une fusion mène à Test, pas à Done ; Done est un geste humain |
 | Auto-add to project | **Activé** : dépôt `kx-marketplace`, filtre `is:issue` | Chaque nouvelle issue arrive dans le tableau |
 | Auto-archive items | Facultatif : `is:closed updated:<@today-30d` | Garde le tableau lisible |
+
+Clore un ticket, à la main :
+
+1. **Livré** : après la release, passez Status à Done, puis fermez l'issue avec **Close as completed**. Déplacer la carte ne ferme pas l'issue.
+2. **Abandonné** : fermez l'issue avec **Close as not planned**, sans passer Status à Done.
 
 ### 6.5 Vues
 

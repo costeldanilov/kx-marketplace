@@ -111,7 +111,6 @@ Restent à fixer, sans bloquer le démarrage :
 
 | Sujet | Où | Quand |
 |---|---|---|
-| Durée de conservation du dossier de preuves | §7.6 | Avant la première release auditée |
 | Seuils, modèles épinglés et plafonds de coût des evals | §8.2 | Avec les premières skills |
 | Poids du score de risque (D6) ; points et seuils du poids du ticket (D93) | §3.4, §3.6 | Mesurés sur les premiers tickets |
 | Budgets par ticket, par exécution et par jour | §8.6 | Mesurés sur les premiers tickets |
@@ -232,38 +231,36 @@ repository:
   ticket_folder: work/{ticket}
 
 forge:
-  expert: azure-devops
-  organization: <organisation>
-  project: <projet>
+  expert: github                 # premier expert ouvert (§2.13) ; `fixture` pour les essais
+  owner: <propriétaire>
   repository: <dépôt>
 
 tracker:
-  expert: azure-devops
-  project: <projet>
-  work_item_type: User Story
-  states:                        # rôle → nom réel de l'état
-    backlog: To Do
-    refinement: Design            # nom réel de l'état dans ce tracker
+  expert: github
+  project: { owner: <propriétaire>, number: <numéro> }   # GitHub Project qui porte les états
+  states:                        # rôle → option du champ Status (§2.13)
+    backlog: Backlog
+    refinement: Refinement
     ready: Ready
-    doing: Doing
+    doing: In progress
     blocked: Blocked
-    review: In Review
-    test: To Test
+    review: In review
+    test: Test
     verified: Verified
     done: Done
-  fields:                        # rôle → nom de référence du champ
-    acceptance_criteria: Microsoft.VSTS.Common.AcceptanceCriteria
-    priority: Microsoft.VSTS.Common.Priority
-    sensitive: Custom.Sensitive
-    iso27001: Custom.ISO27001
-    gdpr: Custom.RGPD
-    decisions: Custom.Decisions
-    blocked_from: Custom.BlockedFrom
-  groups:                        # rôle → nom réel du groupe
-    spec_approvers: Approbateurs spec
-    testers: Testeurs
-    agents: Agents
-    adr_approvers: Architectes      # décident des ADR (D90)
+  fields:                        # rôle → support du rôle (§2.13)
+    acceptance_criteria: "section:Acceptance criteria"   # section du formulaire d'issue
+    decisions: "section:Decisions"
+    priority: "project:Priority"                         # champ du Project
+    sensitive: "project:Sensitive"
+    iso27001: "label:kx:iso27001"
+    gdpr: "label:kx:gdpr"
+    blocked_from: "comment:kx-blocked-from"             # commentaire de trace de l'expert
+  groups:                        # rôle → équipe ou liste de comptes
+    spec_approvers: <équipe>
+    testers: <équipe>
+    agents: <équipe ou App>
+    adr_approvers: <équipe>         # décident des ADR (D90)
 
 review:
   pr_size: { max_files: 30, max_lines: 600 }     # exemples, à fixer par dépôt
@@ -286,13 +283,6 @@ delivery:
   environments:
     - { name: dev, agents_may_deploy: true }
     - { name: production, agents_may_deploy: false }
-
-evidence:                        # dossier de preuves de release (§7.6, D83)
-  storage: azure-blob            # azure-blob | directory ; autre hôte par un expert
-  account: <compte de stockage>
-  container: <conteneur>
-  retention: <durée>             # fixée par la politique de l'entreprise
-  immutable: true                # stockage immuable recommandé
 
 weighing:                        # poids du ticket (§3.6) ; points et seuils à calibrer
   classes: { S: [0, 2], M: [3, 5], L: [6, 9], XL: [10, 99] }
@@ -343,7 +333,8 @@ Règles :
 - **Aucun secret dans le profil.** Le jeton d'accès reste hors du dépôt.
 - **Un schéma versionné.** `schema: kx.profile/1`. Un script valide le fichier contre un schéma JSON fourni par `kx-core`.
 - **Le profil est une zone sensible.** Le modifier change les contrôles.
-- **[NV]** Noms de référence des champs natifs (`Microsoft.VSTS.Common.*`) et forme `Custom.<Nom>` des champs personnalisés : connus de mémoire, à vérifier.
+- **Un expert, une correspondance.** Les valeurs de `states`, `fields` et `groups` sont lues par l'expert déclaré. L'exemple suit l'expert `github` (§2.13). Chaque expert décrit sa propre forme de valeurs.
+- **[NV]** Forme des valeurs de `fields` (`section:`, `project:`, `label:`, `comment:`) : à fixer avec l'expert `github` à l'étape de conception.
 
 
 ### 2.4 Tracker : rôles des états
@@ -394,15 +385,16 @@ zones:
   - id: auth
     title: Authentification et sessions
     paths: ["src/**/auth/**", "src/**/session/**"]
-    checks: [security-review]
+    checks: [kx/security]
   - id: factory
     title: Réglages de l'usine
     paths: [".knowledge/factory/**", ".knowledge/lessons/**", ".knowledge/review/**", ".knowledge/conventions/**", ".azure-pipelines/**", ".azuredevops/**", ".github/copilot-instructions.md", ".github/instructions/**", ".github/workflows/**", ".github/CODEOWNERS", ".github/ISSUE_TEMPLATE/**", ".claude/settings.json", ".mcp.json", ".knowledge/decisions/**", ".coderabbit.yaml", "**/NuGet.Config", "**/nuget.config"]
-    checks: [human-owner-review]
+    checks: [kx/owner-review]
 ```
 
 - La zone `factory` est fournie par défaut et ne peut pas être retirée. Elle protège les contrôles eux-mêmes.
-- `checks` nomme des contrôles déclarés ailleurs (statuts de PR requis). Un nom inconnu est une erreur.
+- `checks` nomme des statuts de PR publiés par un garde-fou ou un job (§6.3, §6.4), par exemple `kx/security` ou `kx/owner-review`. Un nom inconnu est une erreur.
+- `kx/owner-review` est publié par le garde-fou `owner-review` (§6.4) : un propriétaire humain des chemins touchés, qui n'est pas l'auteur, a approuvé le dernier push. La revue native de `CODEOWNERS` ne publie pas de statut ; ce garde-fou la rend lisible par `sensitive`.
 - Le garde-fou `sensitive` compare les chemins modifiés d'une PR aux `paths`. Il bloque si le ticket dit `sensitive: false` alors qu'une zone est touchée, ou si un contrôle exigé n'a pas réussi.
 
 
@@ -508,19 +500,20 @@ Conséquences :
 
 Besoin : un bot relecteur (Copilot Code Review, CodeRabbit…) relit la PR sans connaître le projet. Le dépôt lui donne un fichier Markdown d'instructions : il le guide dans le projet et lui présente le bundle de connaissances.
 
-Faits vérifiés — Copilot Code Review sur Azure Repos (A39) :
+Faits vérifiés — Copilot Code Review sur GitHub (A68, A69, lus le 2026-11-27) :
 
-- **[V]** Instructions du dépôt : `.azuredevops/copilot-instructions.md` ou `.github/copilot-instructions.md`. Copilot lit ce fichier à chaque relecture.
-- **[V]** Instructions par chemin : fichiers `*.instructions.md` dans `.azuredevops/instructions/` ou `.github/instructions/`, avec un en-tête `applyTo` (globs). Un fichier sans `applyTo` est ignoré. Une règle par chemin ne s'applique qu'aux fichiers modifiés qui correspondent.
-- **[V]** Copilot lit les instructions sur la **branche cible** de la PR. Une PR qui modifie les instructions n'agit pas sur sa propre relecture.
-- **[V]** Copilot traite tout le fichier à chaque relecture ; les instructions comptent dans la consommation. La page ne donne pas de limite de taille.
-- **[V]** Des instructions d'organisation et de projet existent aussi, réglées dans Azure DevOps. Celles du dépôt priment, sans garantie : c'est un modèle qui les interprète.
-- **[NV]** Copilot ouvre-t-il un autre fichier du dépôt cité dans les instructions (un concept du bundle) ? La page ne le dit pas.
+- **[V]** Instructions du dépôt : `.github/copilot-instructions.md`. La relecture de code les utilise ; le réglage *Settings → Copilot → Code review → Use custom instructions when reviewing pull requests* est actif par défaut. (A68)
+- **[V]** Instructions par chemin : fichiers `NAME.instructions.md` dans `.github/instructions/`, avec un en-tête `applyTo` (globs). Elles ne s'appliquent que si les fichiers modifiés correspondent. Elles ne servent qu'à Copilot Code Review et à l'agent cloud de Copilot ; la clé `excludeAgent` (`code-review` ou `cloud-agent`) en exclut l'un des deux. (A68, A69)
+- **[V]** Copilot lit les instructions sur la **branche de tête** de la PR, pas sur la branche cible. Une PR qui modifie les instructions agit donc sur sa propre relecture. (A68, A69)
+- **[V]** Par défaut, les relectures de Copilot ne comptent pas dans les approbations exigées. Un réglage peut l'autoriser à approuver ; il reste désactivé (D5). (A69)
+- **[NV]** Comportement d'un fichier sans `applyTo` ; limite de taille lue par la relecture. Les pages ne le disent pas.
+- **[NV]** Copilot ouvre-t-il un autre fichier du dépôt cité dans les instructions (un concept du bundle) ? Les pages ne le disent pas.
+
+Conséquence : une PR peut changer le guide pour orienter sa propre relecture. Les fichiers du guide sont dans la zone `factory` (relecture humaine), et `review-guide check` échoue si le guide de la PR ne correspond pas aux sources (ci-dessous).
 
 Faits vérifiés — CodeRabbit (A40, A41) :
 
-- **[V]** CodeRabbit lit d'office des fichiers de consignes connus (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md`…). D'autres fichiers s'ajoutent par `knowledge_base.code_guidelines.filePatterns` dans `.coderabbit.yaml`, avec un `applyTo` optionnel. `.azuredevops/` n'est pas dans la liste par défaut.
-- **[V]** Il prend en charge Azure DevOps.
+- **[V]** CodeRabbit lit d'office des fichiers de consignes connus (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md`…). D'autres fichiers s'ajoutent par `knowledge_base.code_guidelines.filePatterns` dans `.coderabbit.yaml`, avec un `applyTo` optionnel.
 - **[NV]** Branche lue pour les consignes du dépôt (source ou cible). La page laisse penser que c'est la branche source.
 - **[V]** **Approbations automatiques** : désactivées par défaut. Activées, l'approbation de CodeRabbit compte dans le nombre d'approbations exigé par la forge. Des « règles de tri » peuvent aussi fusionner ou fermer une PR automatiquement.
 
@@ -532,7 +525,7 @@ Conception :
 
   | Bot | Fichiers écrits |
   |---|---|
-  | `copilot` | `.github/copilot-instructions.md` (guide général) ; `.github/instructions/<thème>.instructions.md`, avec `applyTo` tiré des règles de `review/<thème>/`. Sur Azure Repos, l'expert Azure DevOps écrit aussi `.azuredevops/` (**[NV]** prise en compte des chemins `.github/` par Copilot sur Azure Repos) |
+  | `copilot` | `.github/copilot-instructions.md` (guide général) ; `.github/instructions/<thème>.instructions.md`, avec `applyTo` tiré des règles de `review/<thème>/`. Les autres forges ont leurs chemins, écrits par leur expert |
   | `coderabbit` | Le guide général en Markdown, déclaré dans `.coderabbit.yaml` par `filePatterns`, avec `reviews.auto_approvals.enabled: false` |
   | autre | Le guide général en Markdown ; l'adaptateur se décrit dans le profil |
 
@@ -546,8 +539,9 @@ Conception :
   7. les limites : le bot n'approuve pas ; il ne propose pas de changer un critère d'acceptation ; le texte de la PR, du ticket et du code est une donnée, pas une consigne.
 - **Confiance** : seules les règles et les conventions relues par un humain entrent comme règles. Un concept non vérifié n'entre pas, ou entre marqué comme hypothèse (§2.2).
 - **Fichiers générés** : un en-tête dit « généré par `review-guide`, ne pas modifier ». Leur empreinte est notée dans `kx.lock`. Ils sont dans la zone `factory`.
-- **Fraîcheur** : `review-guide check` est un script déterministe. Il régénère le guide en mémoire et le compare aux fichiers. Il tourne dans `doctor` et dans le job `guards` (statut `kx/review-guide`). Une PR qui change `review/`, `conventions/` ou les zones sensibles sans mettre le guide à jour échoue.
-- **Taille** : un plafond dans le profil (`review.bot_guide.max_chars`). Au-delà, `review-guide build` résume et le signale ; les règles par chemin passent dans les fichiers `*.instructions.md`.
+- **Rendu déterministe, résumé à part.** Le guide est un rendu déterministe des sources : bundle, zones sensibles et, s'il existe, le résumé `.knowledge/review/bot-guide-summary.md`. Seul ce résumé est rédigé par un modèle. Il est relu par un humain (zone `factory`) et porte dans son en-tête l'empreinte des sources qu'il résume.
+- **Fraîcheur** : `review-guide check` est un script déterministe, sans modèle. Il refait le rendu en mémoire à partir des sources, résumé compris, et le compare aux fichiers. Il vérifie aussi que l'empreinte notée dans le résumé correspond aux sources actuelles. Il tourne dans `doctor` et dans le job `guards` (statut `kx/review-guide`). Une PR qui change `review/`, `conventions/` ou les zones sensibles sans refaire le guide, ou le résumé quand il existe, échoue.
+- **Taille** : un plafond dans le profil (`review.bot_guide.max_chars`). Au-delà, `review-guide build` demande au modèle d'écrire ou de refaire le résumé, puis refait le rendu ; les règles par chemin passent dans les fichiers `*.instructions.md`. Le rendu n'appelle jamais le modèle.
 - **Valeur des remarques des bots** : une remarque de bot est une aide. Elle ne fait ni bloquer ni passer une porte (spécification de `kx-guild`, règle 4). `fix` la traite comme une remarque de Copilot : elle peut être écartée avec une raison.
 
 Contrôles de `doctor` (niveau 1 et 3) :
@@ -651,7 +645,7 @@ Le tableau reprend les mêmes rôles que sur les autres forges. L'état du ticke
 | Classe du ticket (§3.6) | Champ `Class` du Project (S, M, L, XL) | Écrit par le script `weigh` |
 | Type de ticket | Type d'issue si disponible, sinon label `kx:type/<type>` | Voir **[NV]** ci-dessus |
 
-Automatisations du Project : « Item added » → Backlog ; « Item closed » → Done ; « Pull request merged » **désactivé**, car une fusion mène à `test`, et `done` reste un geste humain.
+Automatisations du Project : « Item added » → Backlog ; « Item closed » **désactivé**, car une fermeture « not planned » n'est pas une livraison ; « Pull request merged » **désactivé**, car une fusion mène à `test`. `done` reste un geste humain : après la livraison, l'humain passe `Status` à Done, puis ferme l'issue « completed ». Déplacer la carte ne ferme pas l'issue. Un ticket abandonné est fermé « not planned » sans passer à Done.
 
 Contrôle des gestes interdits :
 
@@ -671,9 +665,9 @@ Limite à dire : GitHub ne bloque pas le geste avant qu'il ait lieu, contraireme
 | Revue des propriétaires de code | Oui ; `CODEOWNERS` ne liste que des humains | Non pendant la dérogation (le propriétaire serait aussi l'auteur) ; réactivée à sa fin |
 | Approbation du dernier push par une autre personne | Oui | Non |
 | Résolution des conversations | Oui | Oui |
-| Contrôles requis (voir la limite ci-dessous) | `validate`, puis les statuts `kx/pr-size`, `kx/sensitive`, `kx/criteria-locked`, `kx/plan-gate`, `kx/peer-approval`, `kx/review-guide`, `kx/adr`, `kx/secrets`, `kx/dependencies`, `kx/security` au fil de leur réalisation ; source limitée à GitHub Actions | Idem |
+| Contrôles requis (voir la limite ci-dessous) | `validate`, puis les statuts `kx/pr-size`, `kx/sensitive`, `kx/criteria-locked`, `kx/plan-gate`, `kx/peer-approval`, `kx/owner-review`, `kx/review-guide`, `kx/adr`, `kx/secrets`, `kx/dependencies`, `kx/security` au fil de leur réalisation ; source limitée à GitHub Actions | Idem |
 | Force push et suppression | Bloqués | Bloqués |
-| Tags `*--v*` | Création, mise à jour et suppression réservées aux humains | Idem |
+| Tous les tags (cible *All tags*) | Création, mise à jour et suppression réservées aux humains ; les tags de version ont la forme `<plugin>--v<version>` | Idem |
 | Liste de contournement | Rôle administrateur seulement, pour l'urgence ; jamais l'identité des agents | Idem |
 | Relecture Copilot automatique | Activée | Activée |
 | GitHub Actions peut approuver une PR | Non | Non |
@@ -690,7 +684,7 @@ Sur GitHub, l'auteur d'une PR ne peut pas l'approuver lui-même. La dérogation 
 - Jamais dans `CODEOWNERS`, jamais dans la liste de contournement. Son approbation ne peut donc pas satisfaire la revue des propriétaires de code, même si elle comptait dans le nombre d'approbations (**[NV]** ci-dessus).
 - **Fusion.** Avec le contenu en écriture, l'App peut fusionner une PR dont les contrôles et les approbations sont satisfaits. Les réglages ci-dessus ne tiennent donc pas, à eux seuls, l'interdit « aucun agent ne fusionne ». Piste : un ruleset séparé sur la branche par défaut, « Restrict updates », contournable par les seuls rôles humains. **[NV]** Ce ruleset bloque la fusion par l'App sans lever, pour les humains, les autres règles. Aucune App d'agents n'est installée avant que ce point soit vérifié par un essai.
 - **Accès au Project.** Les endpoints REST des Projects d'un **compte personnel** n'acceptent ni les jetons d'installation d'une GitHub App, ni les jetons d'utilisateur d'une App, ni les jetons fins ; ceux d'un Project d'**organisation** les acceptent, avec la permission « Projects » de l'organisation (A65). L'usine utilise donc un Project d'organisation dès qu'une App d'agents existe (D104, à décider). En dérogation solo, l'expert agit avec le jeton du développeur.
-- Branches sous le préfixe `agent/`. Piste : un ruleset « Restrict creations » sur toutes les branches sauf `agent/**`, contournable par les rôles humains. **[NV]** Une GitHub App est-elle soumise à un ruleset dont la liste de contournement ne contient que des rôles.
+- Branches sous le préfixe du profil, `repository.agent_branch_prefix` (`agents/` dans l'exemple du §2.3). Piste : un ruleset « Restrict creations » sur toutes les branches sauf `<préfixe>**` (`agents/**` dans l'exemple), contournable par les rôles humains. Le motif est tiré du profil, jamais écrit en dur ; `doctor` signale un ruleset dont le motif ne correspond pas au préfixe. **[NV]** Une GitHub App est-elle soumise à un ruleset dont la liste de contournement ne contient que des rôles.
 
 #### Correspondance du contrat (§2.10)
 
@@ -901,8 +895,13 @@ Les opérations citées sont indicatives. Leur détail se fera à l'étape de co
 - **Déclencheur** : première installation dans un dépôt cible.
 - **Entrées** : forge, tracker, type de ticket, branche par défaut, données par l'humain.
 - **Étapes** : crée le bundle minimal, `profile.yml`, `sensitive-zones.yml` avec la zone `factory`, et le verrou ; dépose l'aiguilleur ; ouvre une PR. Le programme de l'expert est déposé par l'`init` du plugin de l'expert (D38).
+- **Amorçage** (dépôt neuf, aucun expert déposé) :
+  1. `kx-core:init` écrit les fichiers sur une branche locale `<agent_branch_prefix>kx-init` et fait un commit. Il ne pousse rien et n'ouvre pas de PR, car aucun expert ne peut encore le faire.
+  2. Il rend `needs-human` avec la suite : installer le plugin de l'expert, puis lancer son `init` sur la même branche. Cet `init` trouve le verrou sur la branche courante (D38) et dépose le programme de l'expert.
+  3. L'`init` de l'expert pousse la branche et ouvre la PR (`change.open`), qui porte les deux dépôts.
+  4. Sans plugin d'expert, l'humain pousse la branche et ouvre la PR lui-même.
 - **Sorties** : une PR. Rien n'est écrit sur la branche protégée.
-- **Opérations** : `identity.whoami`, `change.open`.
+- **Opérations** : `identity.whoami` ; `change.open` dès qu'un expert est déposé (hors amorçage).
 - **Contrôles** : refuse d'écraser un bundle existant ; propose un plan de fusion.
 - **Erreurs** : dépôt non git ; branche protégée sans stratégie (`needs-human`).
 
@@ -941,13 +940,13 @@ schema: kx.lock/1
 plugins:
   kx-core:    { version: 1.4.0 }
   kx-factory: { version: 1.4.0 }
-  kx-azure-devops: { version: 1.2.1 }
+  kx-github:  { version: 1.2.1 }
 schemas:
   profile: kx.profile/1
   zones: kx.zones/1
 deposited:
-  - { path: .knowledge/factory/experts/azure-devops/expert.py, from: kx-azure-devops@1.2.1, sha256: <empreinte> }
-  - { path: .azure-pipelines/kx/pr.yml, from: kx-factory@1.4.0, sha256: <empreinte> }
+  - { path: .knowledge/factory/experts/github/expert.py, from: kx-github@1.2.1, sha256: <empreinte> }
+  - { path: .github/workflows/kx-pr.yml, from: kx-factory@1.4.0, sha256: <empreinte> }
 migrations: [1, 2, 3]
 ```
 
@@ -961,7 +960,7 @@ Règles de compatibilité :
 Points ouverts :
 
 - **D38 (décidé)** — chaque plugin qui dépose des fichiers a ses propres `init` et `update`. Règles :
-  - `kx-core` passe en premier : il crée le bundle et le verrou. Les autres `init` s'arrêtent si le verrou est absent (`stopped`, lancer `/kx-core:init`).
+  - `kx-core` passe en premier : il crée le bundle et le verrou. Les autres `init` cherchent le verrou sur la branche courante, fusionnée ou non : pendant l'amorçage, c'est la branche locale de `kx-core:init` (§3.4, `init`). Ils s'arrêtent si le verrou est absent (`stopped`, lancer `/kx-core:init`).
   - Un plugin n'écrit que sa propre entrée du verrou et ne touche que les fichiers qu'il a déposés.
   - Les `init` et `update` de tous les plugins ont la même forme : plan, confirmation, branche, PR. `kx-core` en fournit le gabarit d'auteur.
   - Ordre de mise à jour : `kx-core`, puis `kx-factory`, puis les experts, puis les autres. Chaque `update` vérifie que les plugins dont il dépend sont à jour dans le verrou.
@@ -1217,7 +1216,7 @@ Une relecture de sécurité existe dans la partie ouverte. Elle est **séparée*
 | En pipeline | Non (Sherlock, s'il est installé) | Oui : job `security`, statut `kx/security` |
 | Contexte | Neuf | Neuf, distinct de celui de `review` |
 
-Raisons de la séparation : une attention dédiée ; une base de règles et un statut propres, que les zones sensibles exigent déjà (`checks: [security-review]`, §2.6) ; `kx-compliance` s'appuie sur elle au lieu de la refaire.
+Raisons de la séparation : une attention dédiée ; une base de règles et un statut propres, que les zones sensibles exigent déjà (`checks: [kx/security]`, §2.6) ; `kx-compliance` s'appuie sur elle au lieu de la refaire.
 
 Trois couches :
 
@@ -1714,7 +1713,7 @@ Conséquence du premier fait : un garde-fou écrit dans le dépôt cible peut ê
 | Job | Ce qu'il fait | Code de la PR exécuté | Secrets |
 |---|---|---|---|
 | `build` | Build et tests du dépôt (paramètres) ; moteurs de dépendances qui restaurent ou installent | Oui | Aucun |
-| `guards` | `pr-size`, `sensitive`, `criteria-locked`, `plan-gate`, `risk-score`, `peer-approval`, `adr`, `review-guide check` ; publie les statuts | Non : lit le différentiel comme une donnée | Identité de publication des statuts |
+| `guards` | `pr-size`, `sensitive`, `criteria-locked`, `plan-gate`, `risk-score`, `peer-approval`, `owner-review`, `adr`, `review-guide check` ; publie les statuts | Non : lit le différentiel comme une donnée | Identité de publication des statuts |
 | `secrets` | Script de détection de secrets (code, commits, PR, ticket) | Non : lit des données | Identité de lecture du tracker |
 | `dependencies` | Script `dependencies` : moteurs qui lisent les fichiers de verrou ; fusionne avec les résultats du job `build` | Non | Aucun |
 | `security` | Skill `security-review` en `--bare -p`, sortie JSON validée | Non | Clé Anthropic |
@@ -1740,7 +1739,7 @@ Conséquence du premier fait : un garde-fou écrit dans le dépôt cible peut ê
 |---|---|---|
 | `bastion` | Audit de la version | Non-conformité : arrêt |
 | Notes de version | Reprises de la skill `release` | — |
-| Dossier de preuves | Assemblé par `kx-compliance`, déposé dans Azure Storage (§7.6) | Échec du dépôt : arrêt |
+| Dossier de preuves | Assemblé par `kx-compliance`, s'il est installé (§7.6, spécification de `kx-compliance`) | Échec : arrêt |
 | Déploiement sur `production` | Lancé par un humain | Approbation humaine sur l'environnement |
 
 #### `security-scan` — planifiée, sur la branche par défaut
@@ -1772,11 +1771,12 @@ Tous en Python 3, bibliothèque standard seulement (D31). Entrée : identifiant 
 | `plan-gate` | Présence et validation du plan selon D75 | Plan exigé absent ou non validé ; plan modifié après sa validation |
 | `risk-score` | Score de risque par fichier (D6) | Jamais : il informe `review-pr` et Sherlock |
 | `peer-approval` | Approbateur humain, distinct de l'auteur et de celui qui a délégué ; votes des membres de `agents` et des bots ignorés ; dérogation solo déclarée et valide | Approbateur interdit ; dérogation absente ou périmée. **[NV]** Relance du statut à chaque vote |
+| `owner-review` | Pour chaque chemin touché d'une zone qui exige `kx/owner-review` : approbation du dernier push par un propriétaire humain de ce chemin (`CODEOWNERS`), distinct de l'auteur et de celui qui a délégué ; votes des membres de `agents` et des bots ignorés. Statut `kx/owner-review` | Aucun propriétaire valable n'a approuvé. **Dérogation solo** : réussit avec la mention « dérogation solo » si la dérogation est déclarée et valide (§7.1) ; échoue sinon |
 | `agent-output` | Sortie d'agent conforme à son schéma JSON | Schéma non respecté |
 | `secrets` | Secrets dans le différentiel, les messages de commit, la PR et le ticket lié ; marque de contournement `skip-secret-scanning` | Secret trouvé ; marque de contournement dans un commit de la PR |
 | `dependencies` | Failles connues des dépendances directes et transitives ; licences ; fichiers de verrou ; frameworks en fin de support ; exceptions | Faille introduite au-dessus du seuil sans exception valable ; licence interdite ; fichier de verrou absent |
 | `adr` | Chaque candidat ADR de `design.md` a une réponse (`record`, `local`, `reject`) ; un ADR consigné a un numéro libre, un index à jour, l'approbation d'un membre de `adr_approvers` | Candidat sans réponse ; numéro pris ; ADR ajouté ou modifié sans approbation du groupe |
-| `review-guide` | Guide des bots à jour par rapport au bundle (§2.11) | Fichiers générés absents, modifiés à la main ou périmés |
+| `review-guide` | Rendu déterministe du guide des bots comparé aux fichiers ; empreinte des sources notée dans le résumé (§2.11) | Fichiers générés absents, modifiés à la main ou périmés ; résumé périmé |
 
 - Chaque script a ses tests unitaires et un jeu d'essai sur l'expert `fixture`.
 - Chaque script écrit une ligne de journal, avec l'identifiant du job (§7.6).
@@ -1836,7 +1836,6 @@ Règles proposées :
 | Identité de build | Jobs de pipeline | Lire le dépôt ; exécuter les jobs | Publier des statuts (réservé à l'identité de publication) ; pousser sur une branche protégée ; contourner une stratégie |
 | Identité de publication des statuts | Job `publish` seulement | Statuts `kx/*`, fils de PR, commentaires de ticket | Écrire du code |
 | Identité de déploiement | Job de déploiement | `dev` sans approbation ; `production` après approbation humaine sur l'environnement | Déployer hors de la pipeline `release` |
-| Identité des preuves | Étape « dossier de preuves » de la pipeline `release` | Ajouter des fichiers dans le conteneur de preuves | Modifier ou supprimer une preuve ; lire un autre conteneur |
 
 Règles :
 
@@ -1850,7 +1849,6 @@ Règles :
 |---|---|---|
 | Jeton personnel du développeur (forge, tracker) | Magasin sécurisé du poste, par `userConfig` avec `sensitive: true` | Le développeur |
 | Clé Anthropic des pipelines | Coffre de secrets de l'organisation, lié à la pipeline, protégé par « Required template » | Les seuls jobs d'agents |
-| Accès au stockage des preuves | Connexion de service par fédération d'identité, protégée par « Required template » | L'étape « dossier de preuves » |
 | Clés de licence des plugins payants | Magasin sécurisé du poste ; commande `headersHelper` | Le client |
 
 - **Aucun secret dans le dépôt, le profil, le bundle, un commentaire, un journal ou une sortie d'agent.** Le hook de secrets (§5) et un contrôle de la pipeline le vérifient.
@@ -1879,27 +1877,20 @@ Limite à dire publiquement : ces défenses réduisent le risque, elles ne l'ann
 
 Sources de preuve, sans stockage nouveau : historique et discussion du ticket (spécification de `kx-guild`), PR et ses statuts, journaux et artefacts des pipelines, registre de temps (local, hors preuve), sorties d'agents.
 
-Dossier de preuves de version (D82), assemblé par `kx-compliance` à chaque release :
+Traces que les plugins ouverts doivent fournir, lisibles par un outil :
 
-| Pièce | Prouve |
-|---|---|
-| Liste des tickets livrés, avec l'historique de leurs états | Le changement a suivi le cycle |
-| Pour chaque ticket : critères, approbateur de spec, date de `ready` | La spec a été validée par la bonne personne |
-| Pour chaque PR : auteur, délégant, approbateur, statuts `kx/*`, relectures | Séparation des tâches ; contrôles passés |
-| Dérogations solo utilisées | Exceptions déclarées et compensées |
-| Rapports de Bastion | Contrôle de sécurité avant fusion et avant deploy |
-| Preuves de Galileo par critère | Le besoin est vérifié |
-| Approbation du déploiement en production | Décision humaine |
-| Versions du plugin, des gabarits, des experts et des modèles utilisés | Reproductibilité |
-| Liste des composants (SBOM) et rapport des dépendances, avec les exceptions | Composants tiers connus et failles traitées |
+| Trace | Fournie par | Prouve |
+|---|---|---|
+| Historique des états de chaque ticket, avec leur auteur | Expert du tracker (`ticket.history`) | Le changement a suivi le cycle |
+| Critères, approbateur de spec, date de `ready` | Expert du tracker ; `criteria-locked` | La spec a été validée par la bonne personne |
+| Pour chaque PR : auteur, délégant, approbateur, statuts `kx/*`, relectures | Expert de la forge ; journal du ticket | Séparation des tâches ; contrôles passés |
+| Dérogations solo utilisées | Profil ; statut `kx/peer-approval` | Exceptions déclarées et compensées |
+| Constats de `security-review` | Job `security` | Contrôle de sécurité avant fusion |
+| Versions du plugin, des gabarits, des experts et des modèles utilisés | Verrou ; journal du ticket | Reproductibilité |
+| Rapport des dépendances, avec les exceptions | Script `dependencies` | Composants tiers connus et failles traitées |
 
-- Format : un manifeste JSON et des fichiers, avec l'empreinte de chaque pièce.
-- Conservation (D83) : **Azure Storage**, hors des durées de conservation des pipelines. L'emplacement se règle dans le profil (`evidence`, §2.3) ; le plugin ne suppose aucun compte.
-  - un conteneur dédié, écrit par la seule identité des preuves (§7.3) ;
-  - stockage immuable recommandé : rétention fixée, sans modification ni suppression avant l'échéance. **[NV]** Stratégies d'immuabilité d'Azure Blob Storage (rétention temporelle, verrouillage), à vérifier dans la documentation ;
-  - le manifeste et ses empreintes permettent de prouver qu'aucune pièce n'a changé ;
-  - **[À DÉCIDER]** durée de conservation, selon la politique de l'entreprise.
-- Le dossier ne contient aucune donnée personnelle de client (§3.4, collecte omnicanale).
+- Ces traces ne contiennent aucune donnée personnelle de client (§3.4, collecte omnicanale).
+- L'assemblage d'un dossier de preuves de version, son format, son stockage et sa conservation relèvent de `kx-compliance` et de sa propre spécification. Les plugins ouverts n'en dépendent pas.
 
 Correspondance indicative avec les mesures de l'annexe A, contenu du référentiel `kx-iso27001` (citées de mémoire ; la norme est payante, **[NV]** à vérifier sur le texte) :
 
@@ -2160,7 +2151,7 @@ Faits vérifiés (A54) :
 | Watson | moyen | bas | Corrections ciblées |
 | Galileo | petit | bas | Les scénarios et Playwright font la preuve ; le modèle relie les résultats |
 | `security-review` | moyen | moyen | Jugement de sécurité |
-| `scribe`, `review-guide`, `memo`, `checkpoint` | petit | bas | Rédaction courte, structure fixe |
+| `scribe`, `review-guide` (résumé seulement, §2.11), `memo`, `checkpoint` | petit | bas | Rédaction courte, structure fixe |
 | Passepartout | petit ; moyen si la question l'exige | bas | Questions de navigation |
 | `mentor` | grand | moyen | Rare, hebdomadaire, à fort effet |
 
@@ -2371,6 +2362,8 @@ Règles :
 - A65. REST API endpoints for Projects — https://docs.github.com/en/rest/projects/projects
 - A66. Google Antigravity — Agent skills — https://antigravity.google/docs/skills ; Antigravity 2.0 et CLI (TechCrunch, 2026-05-19) — https://techcrunch.com/2026/05/19/google-launches-antigravity-2-0-with-an-updated-desktop-app-and-cli-tool/
 - A67. Gemini 4 Neon in Google Antigravity — https://antigravity.google/blog/gemini-4-neon-in-google-antigravity/
+- A68. Adding repository custom instructions for GitHub Copilot (GitHub Docs) — https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions
+- A69. About GitHub Copilot code review (GitHub Docs) — https://docs.github.com/en/copilot/concepts/agents/code-review
 
 
 ## Annexe E — Nommage et langue (référence unique)
