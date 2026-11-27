@@ -1,0 +1,48 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Aucun plugin commercial dans le dépôt public
+        run: |
+          for p in kx-compliance kx-iso27001 kx-gdpr kx-nis2 kx-dora kx-guild kx-observability; do
+            if [ -e "plugins/$p" ]; then
+              echo "::error::Le plugin commercial $p ne doit pas être dans ce dépôt."
+              exit 1
+            fi
+          done
+
+      - name: Aucune carte de sources ni fichier de secrets
+        run: |
+          found=$(git ls-files '*.map' '.env' '.env.*' '*.pem' '*.pfx' '*.key')
+          if [ -n "$found" ]; then
+            echo "::error::Fichiers interdits : $found"
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # La validation fonctionne sans authentification ni réseau
+      # (vérifié localement le 2026-11-27).
+      - name: Installer Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Valider la marketplace et les plugins
+        run: |
+          claude plugin validate . --strict
+          for d in plugins/*/; do
+            claude plugin validate "$d" --strict
+          done

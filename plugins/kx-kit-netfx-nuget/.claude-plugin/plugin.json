@@ -1,0 +1,14 @@
+{
+  "name": "kx-kit-netfx-nuget",
+  "displayName": "kx kit .NET Framework NuGet",
+  "version": "0.1.0",
+  "description": "Kit de stack pour les bibliothèques .NET Framework publiées en paquets NuGet.",
+  "author": {
+    "name": "KymexIA",
+    "email": "cdanilov@kymexia.fr"
+  },
+  "repository": "https://github.com/costeldanilov/kx-marketplace",
+  "license": "Apache-2.0",
+  "keywords": ["dotnet", "netfx", "nuget", "stack-kit"],
+  "dependencies": ["kx-core", "kx-kit-netfx"]
+}

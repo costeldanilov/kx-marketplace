@@ -1,0 +1,14 @@
+{
+  "name": "kx-kit-netfx-microservice",
+  "displayName": "kx kit .NET Framework microservice",
+  "version": "0.1.0",
+  "description": "Kit de stack pour les microservices .NET Framework.",
+  "author": {
+    "name": "KymexIA",
+    "email": "cdanilov@kymexia.fr"
+  },
+  "repository": "https://github.com/costeldanilov/kx-marketplace",
+  "license": "Apache-2.0",
+  "keywords": ["dotnet", "netfx", "microservice", "stack-kit"],
+  "dependencies": ["kx-core", "kx-kit-netfx"]
+}

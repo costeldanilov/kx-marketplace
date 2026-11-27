@@ -1,0 +1,14 @@
+{
+  "name": "kx-factory",
+  "displayName": "kx factory",
+  "version": "0.1.0",
+  "description": "Flux d'étapes gardées du ticket à la release : spécifier, planifier, coder, relire, vérifier.",
+  "author": {
+    "name": "KymexIA",
+    "email": "cdanilov@kymexia.fr"
+  },
+  "repository": "https://github.com/costeldanilov/kx-marketplace",
+  "license": "Apache-2.0",
+  "keywords": ["sdlc", "agents", "workflow", "review"],
+  "dependencies": ["kx-core"]
+}

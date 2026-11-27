@@ -1,0 +1,23 @@
+# Système et éditeurs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Réglages locaux de Claude Code
+.claude/settings.local.json
+
+# Worktrees et fichiers temporaires
+.worktrees/
+*.tmp
+*.log
+
+# Secrets : ne jamais versionner
+.env
+.env.*
+*.pem
+*.pfx
+*.key
+
+# Cartes de sources : jamais dans un paquet publié
+*.map

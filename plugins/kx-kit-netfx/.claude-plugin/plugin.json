@@ -1,0 +1,14 @@
+{
+  "name": "kx-kit-netfx",
+  "displayName": "kx kit .NET Framework",
+  "version": "0.1.0",
+  "description": "Kit de stack .NET Framework : commandes, prérequis, règles et gabarits.",
+  "author": {
+    "name": "KymexIA",
+    "email": "cdanilov@kymexia.fr"
+  },
+  "repository": "https://github.com/costeldanilov/kx-marketplace",
+  "license": "Apache-2.0",
+  "keywords": ["dotnet", "netfx", "stack-kit"],
+  "dependencies": ["kx-core"]
+}

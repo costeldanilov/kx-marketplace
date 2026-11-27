@@ -1,0 +1,35 @@
+{
+  "name": "kx",
+  "description": "Usine logicielle agentique kx : du ticket au déploiement, les agents exécutent, l'humain décide.",
+  "owner": {
+    "name": "KymexIA",
+    "email": "cdanilov@kymexia.fr"
+  },
+  "plugins": [
+    {
+      "name": "kx-core",
+      "source": "./plugins/kx-core",
+      "description": "Socle commun : profil du dépôt, bundle de connaissances OKF, journal du ticket, scripts déterministes."
+    },
+    {
+      "name": "kx-factory",
+      "source": "./plugins/kx-factory",
+      "description": "Flux d'étapes gardées du ticket à la release : spécifier, planifier, coder, relire, vérifier."
+    },
+    {
+      "name": "kx-kit-netfx",
+      "source": "./plugins/kx-kit-netfx",
+      "description": "Kit de stack .NET Framework : commandes, prérequis, règles et gabarits."
+    },
+    {
+      "name": "kx-kit-netfx-nuget",
+      "source": "./plugins/kx-kit-netfx-nuget",
+      "description": "Kit de stack pour les bibliothèques .NET Framework publiées en paquets NuGet."
+    },
+    {
+      "name": "kx-kit-netfx-microservice",
+      "source": "./plugins/kx-kit-netfx-microservice",
+      "description": "Kit de stack pour les microservices .NET Framework."
+    }
+  ]
+}

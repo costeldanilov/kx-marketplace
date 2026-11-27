@@ -1,0 +1,13 @@
+{
+  "name": "kx-core",
+  "displayName": "kx core",
+  "version": "0.1.0",
+  "description": "Socle commun : profil du dépôt, bundle de connaissances OKF, journal du ticket, scripts déterministes.",
+  "author": {
+    "name": "KymexIA",
+    "email": "cdanilov@kymexia.fr"
+  },
+  "repository": "https://github.com/costeldanilov/kx-marketplace",
+  "license": "Apache-2.0",
+  "keywords": ["sdlc", "agents", "okf", "knowledge"]
+}
