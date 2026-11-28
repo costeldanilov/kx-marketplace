@@ -1,0 +1,38 @@
+name: Ticket
+description: Un besoin à spécifier, réaliser et livrer avec les plugins kx.
+title: "[Ticket] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Les titres des sections ci-dessous sont lus par l'expert `kx-github` (spécification §2.13). Ne les renommez pas.
+        Une faille de sécurité ne s'ouvre pas ici : utilisez le signalement privé (voir `SECURITY.md`).
+
+  - type: textarea
+    id: need
+    attributes:
+      label: Need
+      description: Le besoin, en quelques phrases. Qui en a besoin, et pourquoi.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: |
+        Une phrase vérifiable par critère, numérotée `AC-1`, `AC-2`… Un critère = une vérification.
+        Les numéros ne changent plus après le passage à Ready.
+      placeholder: |
+        AC-1: ...
+        AC-2: ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: decisions
+    attributes:
+      label: Decisions
+      description: Les décisions prises pendant la spécification, avec leur raison.
+    validations:
+      required: false
