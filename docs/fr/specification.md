@@ -83,6 +83,7 @@ Conséquences :
 - Aucun agent ne fusionne, ne crée de tag, ne déploie au-delà de `dev`, n'écrit en production.
 - Les décisions de blocage sont déterministes. Aucun modèle ne décide seul d'un blocage ou d'un passage.
 - Tickets, commentaires et pages sont des entrées non fiables.
+- Le retour d'information avance vers l'étape où l'erreur naît ; la barrière, elle, ne bouge pas (D112). Un contrôle tôt (skill, hook, session) informe ; le contrôle qui tranche reste côté serveur.
 
 ### 1.5 Périmètre
 
@@ -115,7 +116,7 @@ Restent à fixer, sans bloquer le démarrage :
 | Poids du score de risque (D6) ; points et seuils du poids du ticket (D93) | §3.4, §3.6 | Mesurés sur les premiers tickets |
 | Budgets par ticket, par exécution et par jour | §8.6 | Mesurés sur les premiers tickets |
 
-Les points marqués **[NV]** (82 dans ce document) se vérifient pendant la réalisation, chacun avant d'écrire le code qui en dépend.
+Les points marqués **[NV]** (86 dans ce document) se vérifient pendant la réalisation, chacun avant d'écrire le code qui en dépend.
 
 
 ## 2. Contrat avec le dépôt cible
@@ -208,7 +209,77 @@ Règles propres à `kx` (là où OKF laisse le choix) :
 6. **Toute modification du bundle passe par une PR.** `lessons/`, `review/`, `conventions/` et `factory/` sont des zones sensibles par défaut.
 7. **Les données lues par un script sont en YAML dans `factory/`.** Un concept du bundle les décrit.
 
-Dossier du ticket (D11, D33) : `work/<id-du-ticket>/`, hors du bundle. Il contient les documents de travail du ticket : `design.md`, `plan.md`, `sources.md`, fichiers de constats, comptes rendus, rapports de vérification. Le chemin est réglable dans le profil. Ce dossier n'est pas de la connaissance durable : ce qui doit rester devient un ADR ou une leçon.
+Dossier du ticket (D11, D33, D117) : `work/<id-du-ticket>/`, hors du bundle, chemin réglable dans le profil. Ce dossier n'est pas de la connaissance durable : ce qui doit rester devient un ADR ou une leçon. Son organisation est décrite au §2.2.1.
+
+#### 2.2.1 Le dossier du ticket : un contexte qui s'enrichit à chaque étape (D116, D117)
+
+**Pourquoi.** Un agent ne sait que ce qu'on lui donne à lire. Chaque étape du cycle repart d'un contexte neuf (§8.6) : ce qu'une étape a compris et qui n'est pas écrit est perdu pour la suivante. Le dossier du ticket est donc le **contrat entre les étapes**. Chaque étape lit ce que les précédentes ont validé, et y ajoute ce que les suivantes devront savoir.
+
+C'est la forme du shift left appliquée au contexte (D112) : on enrichit le contexte le plus tôt possible, là où le besoin est connu. Une question tranchée pendant la découverte n'est plus posée au développeur ; un exemple fourni par le PO devient un test ; une ambiguïté levée avant `ready` ne devient pas un aller-retour de revue. Plus les rails sont posés tôt, moins le train déraille, et moins le développeur est appelé.
+
+**Règles.**
+
+1. **Le dossier, pas la conversation.** La sortie d'une étape est un ensemble de fichiers, jamais un historique de session. L'étape suivante ne lit que le dossier, le bundle et le code.
+2. **Un index lu en premier.** `manifest.yml` liste chaque artefact : chemin, type, étape qui l'a produit, statut, auteur, validateur, empreinte. Une étape commence par lui.
+3. **Brouillon ou validé.** Un artefact est `draft` tant qu'un humain ne l'a pas validé. Seuls les artefacts `validated` sont des **rails** : l'agent les suit. Un brouillon est une hypothèse, jamais une raison de s'écarter d'une convention relue (§2.2, niveaux de confiance).
+4. **Figé à `ready`.** Les artefacts de découverte qui définissent le comportement attendu (`ticket.md`, `discovery/examples/`, `features/`) sont figés à `ready`, comme les critères. Leur empreinte est notée dans `manifest.yml` ; `criteria-locked` contrôle qu'ils ne changent pas sans nouveau passage par `ready`.
+5. **Proportionné au poids.** La classe du ticket (§3.6) dit quels artefacts sont attendus. Un ticket S n'a pas besoin d'un modèle de flux.
+6. **Aucune donnée personnelle brute.** Les règles de la collecte omnicanale (§3.4) s'appliquent à tout le dossier : référence, résumé, extraits courts anonymisés. Le contenu brut reste dans son système d'origine.
+7. **Une question déjà tranchée n'est pas reposée.** Avant de demander à un humain, une skill ou un agent cherche la réponse dans `discovery/decisions.md`, puis dans le bundle. S'il pose quand même une question, il note pourquoi la réponse trouvée ne suffisait pas.
+
+**Organisation.**
+
+```text
+work/<id>/
+  manifest.yml              # index : artefacts, étape, statut, validateur, empreinte
+  ticket.md                 # besoin, périmètre, hors périmètre, critères AC-n (copie du ticket, figée à ready)
+  discovery/                # ticket specify (étape spec)
+    sources.md              # inventaire des sources ; pour chaque AC-n, les sources qui le fondent
+    extracts/               # un résumé par source, avec extraits courts anonymisés
+    decisions.md            # journal du dialogue : question, réponse retenue, qui a tranché, date
+    open-questions.md       # questions restées ouvertes, avec leur propriétaire
+    glossary.md             # termes métier du ticket, reliés aux concepts de `domain/` du bundle
+    examples/               # cas concrets : entrées, sorties attendues, cas limites, contre-exemples
+    models/                 # flux, séquence ou états (Mermaid), esquisse de contrat d'API, maquette d'écran
+  design/                   # ticket plan (étape plan)
+    design.md
+    plan.md
+    adr/                    # brouillons d'ADR
+  build/                    # implémentation et relectures (étapes code et pr)
+    journal.md              # écarts au plan et pourquoi ; décisions prises en codant
+    findings/               # constats au format kx.finding, avec found_at (D113)
+  verify/                   # ticket verify (étape test)
+    report.md               # matrice de traçabilité et verdict par critère
+    evidence/               # preuves : sorties de commandes, captures, journaux de test
+```
+
+Les scénarios Given / When / Then restent dans `features/<ticket>/` (chemin du profil, D92), car ils s'exécutent avec le code ; `manifest.yml` les référence.
+
+**Artefacts de découverte, selon la classe du ticket.**
+
+| Artefact | S | M | L | XL | Ce qu'il apporte à l'étape suivante |
+|---|---|---|---|---|---|
+| `ticket.md`, `sources.md` | Oui | Oui | Oui | Découpage proposé | Le besoin et sa justification |
+| `decisions.md`, `open-questions.md` | Si dialogue | Oui | Oui | — | Le développeur ne repose pas les questions tranchées |
+| `examples/` | Un exemple | Oui | Oui | — | Des données de test réelles ; une vérification qui ne dépend pas d'une interprétation |
+| `glossary.md` | — | Si termes nouveaux | Oui | — | Le même mot désigne la même chose dans le code, les tests et le ticket |
+| `models/` | — | Si flux ou états | Oui | — | La conception part d'un comportement décrit, pas d'une phrase |
+
+Exemple, sur le fil conducteur « Rejeter une facture sans SIREN acheteur » (classe M) : `examples/` contient une facture valide, une facture sans SIREN acheteur, une facture avec un SIREN mal formé, et le message de rejet attendu pour chacune ; `decisions.md` note que le contrôle porte sur la présence et le format du SIREN, pas sur son existence dans un registre, et qui l'a tranché ; `models/` contient le flux de réception jusqu'au rejet. Neo écrit ses tests à partir de ces fichiers ; Galileo vérifie avec les mêmes.
+
+**Qui lit quoi.**
+
+| Étape | Lit | Écrit |
+|---|---|---|
+| Spécifier (`ticket specify`) | Sources, bundle | `ticket.md`, `discovery/`, `features/` |
+| Concevoir (`ticket plan`) | `ticket.md`, `discovery/` validé, bundle, code | `design/` ; chaque tâche cite les critères, exemples et décisions qu'elle couvre |
+| Coder (développeur ou Neo) | `design/` validé, `discovery/examples/`, `features/` | Code, tests, `build/journal.md` |
+| Relire (`review`, `security-review`, Sherlock) | Le différentiel, `ticket.md`, `design/`, `build/journal.md` | `build/findings/` |
+| Vérifier (`ticket verify`) | Tout le dossier, la PR fusionnée, l'environnement de test | `verify/` |
+
+**Mesure.** Une question posée à un humain après `ready`, dont la réponse aurait pu être tranchée pendant la découverte, est un constat d'étape `spec` trouvé tard (D113). L'agent `mentor` (`kx-guild`) repère celles qui se répètent et propose d'enrichir les questions de `ticket specify` ou le bundle.
+
+- **[NV]** Lecture d'un fichier Mermaid, d'une image de maquette et d'un PDF de tableau blanc par le modèle, dans tous les outils ciblés (D26).
 
 ### 2.3 Profil du dépôt : `factory/profile.yml`
 
@@ -985,7 +1056,7 @@ Points ouverts :
 - **Déclencheur** : un besoin à transformer en ticket, ou un ticket en `backlog` ou `refinement` à compléter.
 - **Entrées** : le besoin en langage libre ; le bundle (`domain`, `decisions`, `architecture`).
 - **Étapes** : pose les questions manquantes ; rédige le constat et le périmètre ; rédige les critères d'acceptation ; propose `priority`, `sensitive`, `iso27001`, `gdpr`, `decisions` avec la raison de chaque valeur ; compare le périmètre aux zones sensibles.
-- **Sorties** : le ticket créé ou mis à jour en `refinement` ; une copie dans le dossier du ticket.
+- **Sorties** : le ticket créé ou mis à jour en `refinement` ; dans le dossier du ticket, `ticket.md`, `discovery/` et `manifest.yml` (§2.2.1), avec les artefacts attendus pour la classe du ticket.
 - **Opérations** : `ticket.get`, `ticket.create`, `ticket.apply`.
 - **Contrôles** :
   - chaque critère est numéroté `AC-n`, écrit dans la langue de travail du profil, en rédaction contrôlée, et dit une seule chose vérifiable ;
@@ -1038,6 +1109,7 @@ Méthode du dialogue (D71), idées reprises de « grill-me » (les travaux étud
 - **Fin explicite**, ce que « grill-me » ne prévoit pas : le dialogue s'arrête quand chaque critère d'acceptation a une réponse, une source et une méthode de vérification, ou quand l'humain arrête. Les questions restées ouvertes sont listées dans le ticket.
 - **Budget** : nombre de questions et coût bornés par le profil. Au-delà, la skill propose de découper le ticket.
 - **Trace** : chaque décision prise pendant le dialogue est notée dans le dossier du ticket (question, réponse retenue, qui a tranché). Une décision d'architecture devient une proposition d'ADR.
+- **Artefacts de découverte** : pendant le dialogue, la skill range ce qu'elle apprend au bon endroit du dossier (§2.2.1) : une décision dans `decisions.md`, un cas concret cité par l'humain dans `examples/`, un terme métier dans `glossary.md`, un flux décrit au tableau blanc dans `models/`. Elle propose ; l'humain valide chaque artefact, qui passe alors `validated` dans `manifest.yml`. Avant `ready`, la skill liste les artefacts attendus pour la classe et ceux qui manquent.
 - **Sortie compacte** : le résultat du dialogue est le ticket et son dossier, pas la conversation. La suite du cycle (Neo, `review`) repart de ces fichiers, dans un contexte neuf.
 
 #### Deux phases avant le code (D72)
@@ -1055,7 +1127,7 @@ Méthode du dialogue (D71), idées reprises de « grill-me » (les travaux étud
 
 - **Rôle** : à partir d'un ticket `ready` et commencé, produire la conception et le plan d'implémentation.
 - **Qui** : le développeur en session, ou Neo.
-- **Entrées** : le ticket, ses sources, le bundle (`architecture/`, `decisions/`, `conventions/`, `lessons/`), le code.
+- **Entrées** : le ticket et son dossier (`manifest.yml` d'abord, puis `discovery/` validé : exemples, décisions, modèles), le bundle (`architecture/`, `decisions/`, `conventions/`, `lessons/`), le code.
 - **Sorties** dans le dossier du ticket :
   - `design.md` : approche retenue, alternatives écartées et pourquoi, impacts (zones sensibles, données, sécurité), décisions qui demandent un ADR ;
   - `plan.md` : tâches ordonnées ; pour chaque tâche, les fichiers, les tests, les critères `AC-n` couverts ; risques ; points de contrôle.
@@ -1184,7 +1256,7 @@ Règles :
 - **Déclencheur** : le travail semble prêt.
 - **Entrées** : le différentiel local par rapport à la branche par défaut ; le ticket ; le bundle (`conventions`, `lessons`, `decisions`) ; les règles de relecture déposées par les experts.
 - **Étapes** : relit le différentiel dans un contexte neuf quand l'outil le permet ; compare chaque critère `AC-n` au code ; cherche les écarts aux conventions et les pièges déjà notés en leçons ; classe chaque constat (bloquant, à corriger, remarque).
-- **Sorties** : un fichier de constats dans le dossier du ticket, au format fixe : identifiant, fichier, ligne, gravité, critère ou règle concerné, explication. Aucune écriture sur la forge.
+- **Sorties** : un fichier de constats dans le dossier du ticket, au format fixe : identifiant, fichier, ligne, gravité, critère ou règle concerné, explication, étape de découverte (D113). Aucune écriture sur la forge.
 - **Opérations** : `ticket.get`.
 - **Contrôles** : le relecteur ne corrige rien ; un critère sans preuve dans le code est un constat bloquant ; un constat cite toujours sa source (critère, convention, leçon).
 - **Erreurs** : branche sans ticket lié (`stopped`).
@@ -1258,6 +1330,19 @@ Règles de base (une règle = un identifiant `KX-SEC-NNN`, une phrase, une faço
 - un fichier téléversé ou une entrée utilisateur est validé avant usage.
 
 La liste est un point de départ. Elle est livrée comme données, et le dépôt peut la compléter dans `review/security/`.
+
+Couches de règles de sécurité (D115) :
+
+| Couche | Livrée par | Contenu | Identifiants |
+|---|---|---|---|
+| Bon sens | `kx-factory` | Règles de base ci-dessus, sans rien de propre à un langage ou à un framework | `KX-SEC-NNN` |
+| Stack | Kit de stack, par exemple `kx-kit-netfx` | La même intention, traduite pour la stack : API à éviter, réglage sûr par défaut, motif de code risqué. Une règle de kit peut préciser une règle de base, jamais l'affaiblir | `KX-SEC-<KIT>-NNN`, avec le lien vers la règle de base précisée |
+| Dépôt | `review/security/` du bundle | Règles propres au produit, écrites et relues par l'équipe | Libres, préfixe du profil |
+| Référentiels | `kx-compliance`, extension commerciale | Exigences de référentiels de sécurité et de conformité | Ceux du référentiel |
+
+- `review` et `security-review` chargent les couches dans cet ordre ; un constat cite la règle la plus précise et sa règle de base.
+- Les règles sont des données, sans code ; un kit ou un dépôt ne peut pas en retirer une de la couche « bon sens », seulement la déclarer non applicable avec une raison, visible dans le constat.
+- La couche « bon sens » ne recopie aucun texte tiers : elle cite les identifiants OWASP et renvoie aux sources.
 
 Dépendances tierces (D87) :
 
@@ -1343,8 +1428,13 @@ Faits vérifiés (A44, A45, A46) :
 
 - **Déclencheur** : un ticket en `test`, après fusion.
 - **Entrées** : identifiant du ticket ; environnement de test.
-- **Étapes** : pour chaque critère `AC-n`, exécute la vérification prévue ; note réussi, échoué ou non vérifiable, avec la preuve ; écrit le rapport ; passe le ticket en `verified` si tout est réussi.
-- **Sorties** : rapport de vérification dans le dossier du ticket ; commentaire sur le ticket ; ticket en `verified` ou laissé en `test`.
+- **Étapes** : confronte ce qui a été demandé à ce qui a été fait (D118) :
+  1. contrôle que les artefacts figés à `ready` (`ticket.md`, `discovery/examples/`, `features/`) ont toujours l'empreinte notée dans `manifest.yml` ; sinon, `stopped` ;
+  2. pour chaque critère `AC-n`, exécute la vérification prévue, et rejoue les exemples de `discovery/examples/` qui s'y rattachent ; note réussi, échoué ou non vérifiable, avec la preuve dans `verify/evidence/` ;
+  3. remplit la **matrice de traçabilité** : critère → sources → scénarios et exemples → tâches du plan → fichiers modifiés par la PR → preuve ;
+  4. signale les **écarts de périmètre**, sans les juger : un fichier modifié qu'aucune tâche ne couvre, une tâche qu'aucun critère ne justifie, un écart au plan absent de `build/journal.md`, une question de `open-questions.md` restée sans réponse. Un écart est un constat (`found_at: test`) ; l'humain décide s'il bloque ;
+  5. écrit `verify/report.md` ; passe le ticket en `verified` si tous les critères sont réussis.
+- **Sorties** : `verify/report.md` et `verify/evidence/` dans le dossier du ticket ; commentaire sur le ticket, avec la matrice ; ticket en `verified` ou laissé en `test`.
 - **Opérations** : `ticket.get`, `ticket.comment`, `ticket.apply`.
 - **Contrôles** : « non vérifiable » n'est jamais « réussi » ; Galileo n'est pas l'agent qui a codé ; identité membre de `testers` ou de `agents`.
 - **Erreurs** : critère échoué (`stopped`, ticket laissé en `test`, retour vers le développeur à décider par l'humain).
@@ -2240,7 +2330,7 @@ Faits vérifiés (A56, A57, A58) :
 - Un changement de comportement d'agent n'est jamais un correctif s'il change le score ou le coût des evals au-delà du seuil (§8.2).
 - Un référentiel est **MAJEUR** quand une exigence change de sens ou disparaît, **MINEUR** quand une exigence s'ajoute ; il porte aussi l'édition et la date du texte qu'il suit (spécification de `kx-compliance`).
 
-**2. Schémas versionnés à part.** Chaque format partagé a un identifiant : `kx.profile/N`, `kx.lock/N`, `kx.expert/N` (contrat d'expert), `kx.finding/N` (constats d'agent), `kx.framework/N` (référentiel). Chaque plugin déclare, dans sa documentation et dans un fichier lu par `doctor`, les schémas qu'il lit et écrit. Un plugin refuse un schéma plus récent que ceux qu'il connaît.
+**2. Schémas versionnés à part.** Chaque format partagé a un identifiant : `kx.profile/N`, `kx.lock/N`, `kx.expert/N` (contrat d'expert), `kx.finding/N` (constats d'agent ; champ obligatoire `found_at` : `spec`, `plan`, `code`, `pr`, `test`, `release` ou `prod`, D113), `kx.framework/N` (référentiel). Chaque plugin déclare, dans sa documentation et dans un fichier lu par `doctor`, les schémas qu'il lit et écrit. Un plugin refuse un schéma plus récent que ceux qu'il connaît.
 
 **3. Publication.**
 
