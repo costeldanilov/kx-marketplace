@@ -41,22 +41,24 @@ Vocabulaire :
 - « Autonome » qualifie le travail, pas la décision. Les agents enchaînent les étapes sans aide ; l'humain garde l'approbation, la fusion, la release et le deploy (§1.4).
 - **OKF** — Open Knowledge Format, le format du bundle de connaissances (§2.0).
 
-### 1.1 bis Ligne directrice : deux modes, une seule boîte à outils
+### 1.1 bis Ligne directrice : trois modes, une seule boîte à outils (D122)
 
-Le développeur choisit son mode pour chaque ticket.
+Le développeur choisit son mode pour chaque ticket. L'usine n'est pas imposée : c'est une trousse à outils, et l'on prend ceux que le chantier demande. Un besoin simple ne justifie pas le coût de cinq agents ; un développeur peut aussi préférer coder lui-même, dans son IDE, avec l'assistant de son choix.
 
-| | Mode pilote | Mode tour de contrôle |
-|---|---|---|
-| Qui code | Le développeur, dans sa session Claude Code | Neo, sur délégation |
-| Rôle du développeur | Il fait le travail avec les skills | Il suit, et intervient aux validations |
-| Outils | Skills et agents du plugin | Les mêmes skills, préchargées dans Neo |
-| Contrôles sur la PR | Tous | Tous, identiques |
+| | Mode manuel | Mode pilote | Mode tour de contrôle |
+|---|---|---|---|
+| Qui code | Le développeur, dans son IDE, avec ou sans assistant (GitHub Copilot ou autre) | Le développeur, dans sa session Claude Code | Neo, sur délégation |
+| Rôle du développeur | Il fait tout ; il prend une skill à la carte s'il le souhaite | Il fait le travail avec les skills | Il suit, et intervient aux validations |
+| Outils | Aucun requis ; skills disponibles à la demande | Skills et agents du plugin | Les mêmes skills, préchargées dans Neo |
+| Coût en tokens | Nul ou faible | Faible à moyen | Le plus élevé |
+| Contrôles sur la PR | Tous | Tous, identiques | Tous, identiques |
 
 Conséquences :
 
 - **Une seule boîte à outils.** Une skill sert au développeur et à Neo. Aucun geste n'existe en double.
 - **Chaque skill fonctionne en session et sans interaction** (`claude -p`). En mode sans interaction, une question à l'humain devient un arrêt avec un message clair.
-- **Les contrôles ne dépendent pas du mode.** Garde-fous, relectures et approbation humaine s'appliquent de la même façon.
+- **Les contrôles ne dépendent pas du mode.** Garde-fous, relectures de la pipeline et approbation humaine s'appliquent de la même façon. Ce sont les règles de l'équipe, pas celles des agents : en mode manuel, les artefacts attendus pour la classe du ticket (§3.6) sont écrits par le développeur.
+- **L'humain garde la main sur l'usine.** Il choisit le mode par ticket, active ou non chaque agent (les agents relèvent d'une extension, `kx-guild`), choisit les modèles par rôle selon le coût et le besoin (§8.3), et fixe le budget par ticket. Il peut revenir au mode manuel à tout moment, y compris en cours de ticket.
 - **La tour de contrôle a besoin de visibilité** : une vue de l'état des tickets délégués, et un signal à chaque point de validation.
 - **Le mode est tracé** : la PR dit si l'auteur est un humain ou Neo, et qui a délégué.
 
