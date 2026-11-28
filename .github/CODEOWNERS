@@ -1,0 +1,5 @@
+# Propriétaires du code : des humains seulement, jamais l'identité des agents
+# (spécification §2.13). Sans effet tant que « Require review from Code Owners »
+# est décoché pendant la dérogation solo ; prêt pour la fin de la dérogation.
+
+* @costeldanilov
