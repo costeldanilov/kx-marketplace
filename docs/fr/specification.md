@@ -73,7 +73,7 @@ Conséquences :
 3. **Automatiser la chaîne** de production et de livraison, sauf les décisions réservées à l'humain.
 4. **Poser des contrôles en couches**, avant et après la PR : garde-fous déterministes, relectures par des agents en contexte neuf, audit sécurité et ISO depuis la pipeline.
 5. **Guider l'attention du relecteur** : un score de risque montre où regarder. Le relecteur ne lit pas chaque diff avec la même attention.
-6. **Rendre le ticket vérifiable** : critères d'acceptation complets, numérotés, dans la langue contrôlée du profil (`scribe`), pour que l'agent de vérification puisse les contrôler un par un.
+6. **Rendre le ticket vérifiable** : critères d'acceptation complets, numérotés, dans la langue de travail du profil (`language.work`), en rédaction contrôlée (`scribe`), pour que l'agent de vérification puisse les contrôler un par un.
 7. **Produire la preuve** : chaque étape laisse une trace exploitable en audit.
 
 ### 1.4 Principes non négociables
@@ -350,7 +350,7 @@ Le plugin ne suppose aucun nom d'état. Il travaille avec des **rôles** ; le pr
 | `doing` | Développeur ou `agents` | Vient de `ready` ou de `blocked` |
 | `blocked` | Tous | `blocked_from` reçoit l'état d'origine |
 | `review` | Développeur ou `agents` | Une PR liée existe |
-| `test` | Humain seulement | PR approuvée et fusionnée |
+| `test` | Humain seulement | PR fusionnée, avec `kx/peer-approval` réussi : approuvée par un pair, ou sous dérogation solo valide (§7.1) |
 | `verified` | `testers` ou `agents` | Un résultat par critère d'acceptation |
 | `done` | `spec_approvers` | Release faite |
 
@@ -366,7 +366,7 @@ Règles communes à tous les experts :
 
 | Rôle | Type | Obligatoire à `ready` | Écrit par | Contenu |
 |---|---|---|---|---|
-| `acceptance_criteria` | Texte | Oui | Humain | Critères numérotés `AC-1`, `AC-2`…, dans la langue contrôlée du profil (`language.controlled`) |
+| `acceptance_criteria` | Texte | Oui | Humain | Critères numérotés `AC-1`, `AC-2`…, dans la langue de travail du profil (`language.work`), en rédaction contrôlée selon `language.controlled` |
 | `priority` | Valeur ordonnée : la première est la plus haute | Oui | Humain | Priorité native, ou champ du tracker |
 | `sensitive` | Booléen | Oui | Humain | Le ticket touche une zone sensible |
 | `iso27001` | Booléen | Non | Humain | Le ticket relève d'une exigence de sécurité |
@@ -663,7 +663,7 @@ Contrôle des gestes interdits :
 1. L'expert `kx-github` refuse à une identité d'agent les passages à `ready`, `test` et `done`, et toute écriture dans les critères.
 2. Un workflow `kx-tracker-guard`, déclenché par `issues` `edited`, détecte une modification des critères après `ready` : statut `kx/criteria-locked` en échec sur les PR liées, et commentaire.
 3. `criteria-locked` lit la chronologie GraphQL de l'issue, à chaque exécution du job `guards` : la date du dernier passage à `ready` (`ProjectV2ItemStatusChangedEvent`), puis les événements de l'Issue field `Sensitive` depuis cette date. Un passage de Yes à No, ou un retrait de la valeur, sans nouveau passage à `ready` fait échouer `kx/criteria-locked`. Aucun commentaire de trace n'est nécessaire.
-4. **[NV]** Un changement de `Status` ou d'un Issue field ne déclenche pas de workflow sur un compte personnel (événement `projects_v2_item` réservé aux organisations ; événement des Issue fields à vérifier). Piste : contrôle planifié qui lit la chronologie des issues ouvertes (ci-dessus) et signale les passages à `ready`, `test` ou `done` faits par une identité d'agent.
+4. **[NV]** Un changement de `Status` ou d'un Issue field ne déclenche pas de workflow sur un compte personnel (événement `projects_v2_item` réservé aux organisations ; événement des Issue fields à vérifier). Piste : contrôle planifié qui lit la chronologie des issues ouvertes (ci-dessus) et signale les passages à `ready`, `test` ou `done` faits par une identité d'agent. Pendant la dérogation solo, les agents agissent avec le jeton du développeur : ce contrôle ne les distingue pas (§7.1).
 
 Limite à dire : GitHub ne bloque pas le geste avant qu'il ait lieu, contrairement aux règles de processus d'Azure DevOps. Le contrôle est fait par l'expert, puis après coup.
 
@@ -680,7 +680,7 @@ Limite à dire : GitHub ne bloque pas le geste avant qu'il ait lieu, contraireme
 | Contrôles requis (voir la limite ci-dessous) | `validate`, puis les statuts `kx/pr-size`, `kx/sensitive`, `kx/criteria-locked`, `kx/plan-gate`, `kx/peer-approval`, `kx/owner-review`, `kx/review-guide`, `kx/adr`, `kx/secrets`, `kx/dependencies`, `kx/security` au fil de leur réalisation ; source limitée à GitHub Actions | Idem |
 | Force push et suppression | Bloqués | Bloqués |
 | Tous les tags (cible *All tags*) | Création, mise à jour et suppression réservées aux humains ; les tags de version ont la forme `<plugin>--v<version>` | Idem |
-| Liste de contournement | Rôle administrateur seulement, pour l'urgence ; jamais l'identité des agents | Idem |
+| Liste de contournement de la branche par défaut | **Vide** : même un administrateur passe par les contrôles. Une urgence passe par une PR, comme le reste. Les tags ont leur propre ruleset, contournable par le seul rôle administrateur | Idem |
 | Relecture Copilot automatique | Activée | Activée |
 | GitHub Actions peut approuver une PR | Non | Non |
 | Secret scanning et push protection | Activés | Activés |
@@ -708,7 +708,7 @@ Sur GitHub, l'auteur d'une PR ne peut pas l'approuver lui-même. La dérogation 
 | `ticket.create`, `ticket.comment` | Issue, commentaire | — |
 | `ticket.apply` | Champ `Status` et champs du Project ; Issue fields (`setIssueFieldValue`) ; labels ; sections du corps | Écriture conditionnelle approchée : relecture de la révision (issue et élément) juste avant l'écriture. **[NV]** Aucune écriture conditionnelle native |
 | `ticket.worklog` | — | `unsupported` : GitHub n'a pas de temps passé |
-| `change.open` | PR avec `Refs #<n>` dans le corps | Jamais `Closes #<n>` : la fusion fermerait l'issue, alors que `done` est un geste humain |
+| `change.open` | PR avec `Refs #<n>` dans le corps ; puis l'expert passe le ticket à `review` (`ticket.apply`) | Jamais `Closes #<n>` : la fusion fermerait l'issue, alors que `done` est un geste humain. `Refs` ne crée pas de lien entre la PR et l'issue : le workflow « Pull request linked to issue » du Project ne se déclenche donc pas. **[NV]** Un lien manuel (*Development*) fermerait aussi l'issue à la fusion |
 | `change.get`, `change.files` | PR, fichiers de la PR | — |
 | `change.threads`, `change.comment`, `change.reply` | Commentaires de revue | Marquer un fil traité : GraphQL (**[NV]**) |
 | `change.status` | Statut de commit `kx/<contrôle>` | Publié par la pipeline, source requise limitée |
@@ -988,7 +988,7 @@ Points ouverts :
 - **Sorties** : le ticket créé ou mis à jour en `refinement` ; une copie dans le dossier du ticket.
 - **Opérations** : `ticket.get`, `ticket.create`, `ticket.apply`.
 - **Contrôles** :
-  - chaque critère est numéroté `AC-n`, écrit dans la langue contrôlée du profil, et dit une seule chose vérifiable ;
+  - chaque critère est numéroté `AC-n`, écrit dans la langue de travail du profil, en rédaction contrôlée, et dit une seule chose vérifiable ;
   - chaque critère déclare sa méthode de vérification ; selon le poids du ticket, il reçoit ses scénarios Given / When / Then (D92) ;
   - la skill propose le poids du ticket (§3.6) et un découpage si la classe est XL ;
   - chaque critère dit comment le vérifier (test, commande, observation) ;
@@ -1139,7 +1139,7 @@ Un critère `AC-n` en langue contrôlée est une phrase, pas une preuve. Pour qu
 
 | Étape | Qui | Ce qui se passe |
 |---|---|---|
-| Spécifier | PO, Team Lead ou chef de projet, avec `ticket specify` et `scribe` | Chaque critère reçoit un ou plusieurs scénarios Given / When / Then, dans la langue contrôlée du profil, dans `features/<ticket>/*.feature` (chemin du profil). Chaque scénario porte l'étiquette de son critère (`@AC-1`). |
+| Spécifier | PO, Team Lead ou chef de projet, avec `ticket specify` et `scribe` | Chaque critère reçoit un ou plusieurs scénarios Given / When / Then, dans la langue de travail du profil, dans `features/<ticket>/*.feature` (chemin du profil). Chaque scénario porte l'étiquette de son critère (`@AC-1`). |
 | Figer | Script `criteria-locked` | À `ready`, l'empreinte des fichiers `.feature` du ticket est notée avec celle des critères. Les changements de `sensitive` se lisent dans la chronologie de l'issue (§2.13). Les modifier ensuite demande un nouveau passage par `ready`. |
 | Implémenter | Neo ou le développeur | Il écrit le code et les liaisons des étapes (Reqnroll, Playwright…). Il boucle en local jusqu'à ce que tous les scénarios du ticket passent. Cette boucle est un contrôle de l'auteur, pas une validation. |
 | Relire | `review`, Sherlock, le pair | Recherche des **étapes creuses** : liaison vide, assertion toujours vraie, système sous test remplacé par un faux, attente fixe à la place d'une vérification. |
@@ -1813,18 +1813,22 @@ Tous en Python 3, bibliothèque standard seulement (D31). Entrée : identifiant 
 ### 7.1 Approbation par un pair et dérogation solo (D16, D17)
 
 - Règle : un pair humain approuve chaque PR. Celui qui a codé ou délégué à Neo n'approuve pas.
-- Dérogation : un projet à une seule personne peut approuver ses propres PR.
+- Dérogation : un projet à une seule personne fusionne ses propres PR sans approbation d'un pair. Sur GitHub, l'auteur ne peut pas approuver sa PR : le ruleset exige alors 0 approbation (§2.13).
 - Proposition pour la dérogation :
   - déclarée dans la clé `derogations` du profil (§2.3), pas dans `userConfig` ; elle porte un motif, une date et une date de revue ;
   - visible sur chaque PR par le statut `kx/peer-approval`, qui affiche « dérogation solo » ;
   - contrôles compensatoires obligatoires, partie ouverte seule (dès l'amorçage) :
     - la relecture Copilot du **dernier push** est terminée, et chacun de ses fils est traité, avant la fusion ;
-    - le contrôle `validate` et les statuts `kx/*` disponibles sont réussis, publiés par une validation de confiance (§2.13) ;
+    - le contrôle `validate` et les statuts `kx/*` disponibles sont réussis. Tant qu'aucune validation de confiance n'existe (§2.13), l'humain lit tout changement de `.github/workflows/` avant de fusionner, car une PR peut modifier le workflow qui la valide. La validation de confiance remplacera cette lecture ;
     - l'humain lit le différentiel complet avant de fusionner ;
     - aucun garde-fou contourné ; revue périodique des PR fusionnées sous dérogation ;
   - s'ajoutent, quand les extensions sont installées : la relecture de Sherlock (`kx-guild`) ; le contrôle de sécurité et de conformité de Bastion (`kx-compliance`) ;
   - levée dès qu'un second humain rejoint le projet. La skill `doctor` le signale.
 - Réglages GitHub concernés : nombre d'approbations exigées, revue des propriétaires de code, approbation du dernier push par une autre personne (§2.13).
+- **Limite de la dérogation sur GitHub** : tant qu'aucune identité d'agents n'existe, les agents agissent avec le jeton du développeur, qui est administrateur. Conséquences :
+  - la chronologie de l'issue désigne le développeur comme auteur de chaque geste : le contrôle après coup ne distingue pas un geste d'agent (§2.13) ;
+  - le ruleset des tags, contournable par le rôle administrateur, n'arrête pas un agent ;
+  - l'interdit fait aux agents (passer à `ready`, `test` ou `done`, poser un tag, fusionner) repose donc sur l'expert, qui refuse ces gestes en mode agent, et sur la discipline du développeur. Une identité d'agents (GitHub App) lève cette limite.
 - **[NV]** Texte exact d'ISO/IEC 27001:2022 (mesure A.5.3, séparation des tâches) : la norme est payante, non consultée ici.
 
 ### 7.2 Code exécuté par une pipeline de PR (voir aussi §6.2)

@@ -47,7 +47,7 @@ La dérogation sera aussi écrite dans le profil du dépôt (`.knowledge/factory
 | Réglage | Valeur | Pourquoi |
 |---|---|---|
 | Enforcement status | Active | Un ruleset en mode *Evaluate* ne bloque rien |
-| Bypass list | **Vide** | Un acteur qui contourne peut fusionner une PR bloquée. Même l'administrateur passe par les contrôles (R3) |
+| Bypass list | **Vide** | Un acteur qui contourne peut fusionner une PR bloquée. Même l'administrateur passe par les contrôles (R3) ; une urgence passe aussi par une PR |
 | Target branches | Default branch | La branche `main` est celle que l'on livre |
 | Restrict deletions | Coché | `main` ne peut pas être supprimée |
 | Block force pushes | Coché | L'historique de `main` ne peut pas être réécrit : la trace des fusions reste |
@@ -86,6 +86,8 @@ Pour ajouter le contrôle : *Add checks*, taper `validate`, puis choisir la sour
 | Block force pushes | Coché | Idem |
 
 Les tags de version ont la forme `<plugin>--v<version>`. Ils servent à résoudre les dépendances entre plugins (D96).
+
+**Limite pendant la dérogation.** Les agents agissent avec votre jeton, qui est administrateur : ce ruleset ne les arrête pas. L'interdit « aucun agent ne pose de tag » repose sur l'expert et sur votre discipline, jusqu'à ce qu'une identité d'agents existe (spécification §7.1).
 
 ## 4. Sécurité
 
@@ -151,7 +153,7 @@ La couleur est libre. Conseil : gris pour Backlog et Refinement, bleu pour Ready
 | Champ | Où | Options | À faire | Pourquoi |
 |---|---|---|---|---|
 | Priority | Champ du Project, créé par le modèle (P0 à P2) | P0, P1, P2, P3, P4 ; P0 est le plus urgent | Ajouter P3 et P4, dans cet ordre | Des codes plutôt que des mots : `critical` et `high` désignent déjà la gravité d'une faille (spécification §2.3). L'ordre des options dit quelle priorité est la plus haute |
-| Size | Champ du Project, créé par le modèle (XS à XL) | S, M, L, XL | Retirer XS | Il porte la classe du ticket, **calculée par le script `weigh`** (spécification §3.6), qui ne produit pas XS. Ce n'est pas une estimation : ne le modifiez pas à la main. La description d'un champ du modèle ne se modifie pas : la règle est donc écrite ici |
+| Size | Champ du Project, créé par le modèle (XS à XL) | S, M, L, XL | Retirer XS | Il porte la classe du ticket, **calculée par le script `weigh`** (spécification §3.6), qui ne produit pas XS. Ce n'est pas une estimation. Le développeur ou le lead dev peut monter ou baisser la classe, avec une raison notée dans le dossier du ticket, jamais sous un plancher. La description d'un champ du modèle ne se modifie pas : la règle est donc écrite ici |
 | Sensitive | **Issue field**, choix simple, porté par l'issue | Yes, No | Créer le champ avec les descriptions ci-dessous, puis l'**épingler** | Il suit le ticket dans tout Project, et chaque changement est tracé avec son auteur et ses valeurs. `criteria-locked` le lit pour bloquer un passage de Yes à No après Ready (spécification §2.4, §2.13) |
 
 **Descriptions de Sensitive**
@@ -177,7 +179,7 @@ Les critères d'acceptation et les décisions restent dans le corps de l'issue, 
 | Item added to project | **On** : Status = Backlog | Tout ticket entre par le début du cycle |
 | Auto-add to project | **On** : dépôt `kx-marketplace`, filtre `is:issue` | Chaque nouvelle issue arrive dans le tableau. Le modèle ne le fournit pas actif : il est à créer |
 | Auto-add sub-issues to project | On | Les sous-issues suivent leur ticket |
-| Pull request linked to issue | **On** : Status = **In review** | Une PR liée ouverte, c'est l'état `review` |
+| Pull request linked to issue | **On** : Status = **In review** | Une PR liée ouverte, c'est l'état `review`. Attention : les PR de l'usine portent `Refs #<n>`, qui ne crée pas de lien. Ce workflow ne se déclenche donc pas pour elles : l'expert passe lui-même le ticket à In review (spécification §2.13, `change.open`). Sans expert, faites-le à la main |
 | Item closed | **Off** | Il traite aussi une fermeture « not planned » comme une livraison, alors que Done exige une release faite |
 | Pull request merged | **Off** | Une fusion mène à Test, pas à Done. Actif, il passerait le ticket à Done à la fusion (R2) |
 | Auto-close issue | **On** | Le passage humain à Done ferme l'issue « completed » : un seul geste |
@@ -198,7 +200,7 @@ Les critères d'acceptation et les décisions restent dans le corps de l'issue, 
 
 ### 6.6 Limite à connaître
 
-GitHub ne permet pas d'interdire un changement de Status selon la personne. Le geste reste possible ; le contrôle se fait **après coup**. La chronologie de l'issue donne, pour chaque changement de Status ou de Sensitive, l'auteur, la date et les valeurs. L'expert `kx-github` refusera les transitions interdites à une identité d'agent ; un contrôle planifié lira la chronologie et signalera un passage à Ready, Test ou Done fait par un agent (spécification §2.13, D103). Pendant la dérogation solo, la règle repose aussi sur votre discipline.
+GitHub ne permet pas d'interdire un changement de Status selon la personne. Le geste reste possible ; le contrôle se fait **après coup**. La chronologie de l'issue donne, pour chaque changement de Status ou de Sensitive, l'auteur, la date et les valeurs. L'expert `kx-github` refusera les transitions interdites à une identité d'agent ; un contrôle planifié lira la chronologie et signalera un passage à Ready, Test ou Done fait par un agent (spécification §2.13, D103). **Pendant la dérogation solo, ce contrôle est aveugle** : les agents agissent avec votre jeton, et la chronologie vous désigne comme auteur de chaque geste. La règle repose alors sur l'expert et sur votre discipline (spécification §7.1).
 
 ## 7. Fichiers du dépôt
 
