@@ -28,14 +28,14 @@
 | `kx-kit-netfx-nuget` | Kit pour les bibliothèques NuGet .NET Framework | Apache-2.0 |
 | `kx-kit-netfx-microservice` | Kit pour les microservices .NET Framework | Apache-2.0 |
 
-Les experts de forge (Azure DevOps, puis GitHub) arrivent ensuite. Les modules `kx-compliance`, `kx-guild` et `kx-observability` sont des offres commerciales. Ils ne sont pas dans ce dépôt.
+L'expert GitHub (`kx-github`) arrive ensuite, en open source. L'expert Azure DevOps (`kx-azure-devops`) et les modules `kx-compliance`, `kx-guild` et `kx-observability` sont des offres commerciales. Ils ne sont pas dans ce dépôt.
 
 ## Installer
 
 ```bash
 claude plugin marketplace add costeldanilov/kx-marketplace
-claude plugin install kx-core@kx
-claude plugin install kx-factory@kx
+claude plugin install kx-core@kymexia
+claude plugin install kx-factory@kymexia
 ```
 
 Le plugin ne contient rien de propre à un projet. Tout le contexte du dépôt cible vient de son bundle de connaissances et de la configuration du plugin.

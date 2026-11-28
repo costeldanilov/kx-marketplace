@@ -10,5 +10,5 @@
   "repository": "https://github.com/costeldanilov/kx-marketplace",
   "license": "Apache-2.0",
   "keywords": ["dotnet", "netfx", "stack-kit"],
-  "dependencies": ["kx-core"]
+  "dependencies": ["kx-factory"]
 }
