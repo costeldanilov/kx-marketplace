@@ -359,6 +359,8 @@ Règles communes à tous les experts :
 1. Un agent n'écrit jamais les critères d'acceptation. En mode pilote, le développeur les écrit sous sa propre identité.
 2. Un agent ne fait jamais entrer un ticket dans `ready`, `test` ou `done`.
 3. Le changement des critères par un humain après `ready` reste possible. Le garde-fou `criteria-locked` (§6) le détecte.
+4. `sensitive` est figé à `ready` comme les critères. Passer de `true` à `false`, ou effacer la valeur, demande un nouveau passage par `ready` ; `criteria-locked` le détecte. Passer de `false` à `true` reste libre : cela renforce les contrôles (poids minimum, relecture de sécurité, plan exigé).
+5. Un agent n'écrit jamais `sensitive` à `false` après `ready`.
 
 ### 2.5 Ticket : champs attendus
 
@@ -653,7 +655,8 @@ Contrôle des gestes interdits :
 
 1. L'expert `kx-github` refuse à une identité d'agent les passages à `ready`, `test` et `done`, et toute écriture dans les critères.
 2. Un workflow `kx-tracker-guard`, déclenché par `issues` `edited`, détecte une modification des critères après `ready` : statut `kx/criteria-locked` en échec sur les PR liées, et commentaire.
-3. **[NV]** Un changement de `Status` ne déclenche pas de workflow sur un Project de compte personnel (événement `projects_v2_item` réservé aux organisations). Piste : contrôle planifié qui compare les `Status` à la chronologie des issues, et alerte.
+3. `Sensitive` est un champ du Project : sa modification ne déclenche pas `issues` `edited`. Au passage à `ready`, l'expert écrit un commentaire de trace avec un marqueur HTML caché : empreinte des critères, valeur de `Sensitive`, date. `criteria-locked` compare à chaque exécution du job `guards` la valeur actuelle à cette trace. **[NV]** L'historique des modifications d'un commentaire, avec son auteur, est lisible par l'API : une trace modifiée à la main doit être détectée.
+4. **[NV]** Un changement de `Status` ne déclenche pas de workflow sur un Project de compte personnel (événement `projects_v2_item` réservé aux organisations). Piste : contrôle planifié qui compare les `Status` à la chronologie des issues, et alerte.
 
 Limite à dire : GitHub ne bloque pas le geste avant qu'il ait lieu, contrairement aux règles de processus d'Azure DevOps. Le contrôle est fait par l'expert, puis après coup.
 
@@ -1130,7 +1133,7 @@ Un critère `AC-n` en langue contrôlée est une phrase, pas une preuve. Pour qu
 | Étape | Qui | Ce qui se passe |
 |---|---|---|
 | Spécifier | PO, Team Lead ou chef de projet, avec `ticket specify` et `scribe` | Chaque critère reçoit un ou plusieurs scénarios Given / When / Then, dans la langue contrôlée du profil, dans `features/<ticket>/*.feature` (chemin du profil). Chaque scénario porte l'étiquette de son critère (`@AC-1`). |
-| Figer | Script `criteria-locked` | À `ready`, l'empreinte des fichiers `.feature` du ticket est notée avec celle des critères. Les modifier ensuite demande un nouveau passage par `ready`. |
+| Figer | Script `criteria-locked` | À `ready`, l'empreinte des fichiers `.feature` du ticket est notée avec celle des critères. La valeur de `sensitive` est notée avec elles. Les modifier ensuite demande un nouveau passage par `ready`. |
 | Implémenter | Neo ou le développeur | Il écrit le code et les liaisons des étapes (Reqnroll, Playwright…). Il boucle en local jusqu'à ce que tous les scénarios du ticket passent. Cette boucle est un contrôle de l'auteur, pas une validation. |
 | Relire | `review`, Sherlock, le pair | Recherche des **étapes creuses** : liaison vide, assertion toujours vraie, système sous test remplacé par un faux, attente fixe à la place d'une vérification. |
 | Vérifier | Galileo | Relance les mêmes scénarios sur `dev`, dans un contexte neuf. Son verdict seul fait passer le ticket en `verified`. |
@@ -1769,7 +1772,7 @@ Tous en Python 3, bibliothèque standard seulement (D31). Entrée : identifiant 
 |---|---|---|
 | `pr-size` | Nombre de fichiers et de lignes modifiés | Seuil du profil dépassé ; toujours sous 100 fichiers (limite de Copilot) |
 | `sensitive` | Chemins modifiés contre `sensitive-zones.yml` | Zone touchée alors que le ticket dit `sensitive: false` ; valeur de `sensitive` absente ; contrôle exigé par la zone non réussi |
-| `criteria-locked` | Révisions du champ des critères et empreinte des fichiers `.feature` du ticket depuis `ready` | Critères ou scénarios modifiés après `ready` sans nouveau passage par `ready` |
+| `criteria-locked` | Révisions du champ des critères, empreinte des fichiers `.feature` du ticket et valeur de `sensitive`, comparées à la trace écrite à `ready` | Critères ou scénarios modifiés après `ready` ; `sensitive` passé de `true` à `false` ou effacé après `ready` ; trace de `ready` absente ou modifiée ; dans tous les cas sans nouveau passage par `ready` |
 | `plan-gate` | Présence et validation du plan selon D75 | Plan exigé absent ou non validé ; plan modifié après sa validation |
 | `risk-score` | Score de risque par fichier (D6) | Jamais : il informe `review-pr` et Sherlock |
 | `peer-approval` | Approbateur humain, distinct de l'auteur et de celui qui a délégué ; votes des membres de `agents` et des bots ignorés ; dérogation solo déclarée et valide | Approbateur interdit ; dérogation absente ou périmée. **[NV]** Relance du statut à chaque vote |

@@ -144,7 +144,7 @@ La couleur est libre ; conseil : gris pour Backlog et Refinement, bleu pour Read
 - **Priority** : des codes plutôt que des mots, car `critical` et `high` désignent déjà la gravité d'une faille (spécification §2.3).
 - **Size** porte la classe du ticket : elle est **calculée par le script `weigh`**, ce n'est pas une estimation. Ne la modifiez pas à la main. La description d'un champ du modèle ne se modifie pas : la règle est donc écrite ici. `Estimate` reste libre pour une estimation humaine.
 - **Sensitive**, descriptions à saisir :
-  - champ : `Le ticket touche une zone sensible (sensitive-zones.yml) : sécurité, auth, réglages de l'usine. Fixé par un humain avant Ready.` ;
+  - champ : `Le ticket touche une zone sensible (sensitive-zones.yml) : sécurité, auth, réglages de l'usine. Fixé par un humain avant Ready, puis figé : repasser à No exige un nouveau Ready.` ;
   - Yes : `Zone sensible touchée : relecture de sécurité et poids minimum M.` ;
   - No : `Aucune zone sensible. La PR échoue si elle en touche une.`
 - Les champs `Estimate`, `Start date` et `Target date` du modèle sont sans effet sur l'usine.
