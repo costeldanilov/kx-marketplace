@@ -139,7 +139,7 @@ La couleur est libre ; conseil : gris pour Backlog et Refinement, bleu pour Read
 |---|---|---|---|
 | Priority | Modèle Kanban (P0, P1, P2) | P0, P1, P2, P3, P4 ; P0 est le plus urgent | Ajouter P3 et P4, dans cet ordre |
 | Size | Modèle Kanban (XS à XL) | S, M, L, XL : poids du ticket (spécification §3.6) | Retirer XS |
-| Sensitive | **New field**, single select | Yes, No | Créer le champ, avec les descriptions ci-dessous |
+| Sensitive | **Issue field**, single select : il est défini dans les réglages du propriétaire et porté par l'issue | Yes, No | Créer le champ, avec les descriptions ci-dessous |
 
 - **Priority** : des codes plutôt que des mots, car `critical` et `high` désignent déjà la gravité d'une faille (spécification §2.3).
 - **Size** porte la classe du ticket : elle est **calculée par le script `weigh`**, ce n'est pas une estimation. Ne la modifiez pas à la main. La description d'un champ du modèle ne se modifie pas : la règle est donc écrite ici. `Estimate` reste libre pour une estimation humaine.
@@ -184,7 +184,7 @@ GitHub ne permet pas d'interdire un changement de Status selon la personne. Sur 
 ## 7. Fichiers du dépôt qui complètent ces réglages
 
 - `.github/CODEOWNERS` : les propriétaires du code, humains seulement. Sans effet tant que la revue des propriétaires est décochée ; prêt pour la fin de la dérogation ;
-- `.github/ISSUE_TEMPLATE/story.yml` : formulaire de ticket avec les sections *Need*, *Acceptance criteria* (`AC-1`, `AC-2`…, dans la langue de travail du profil, D105) et *Decisions*. *Sensitive* n'y est pas : c'est un champ du Project (§6.3), pour garder une seule source ;
+- `.github/ISSUE_TEMPLATE/story.yml` : formulaire de ticket avec les sections *Need*, *Acceptance criteria* (`AC-1`, `AC-2`…, dans la langue de travail du profil, D105) et *Decisions*. *Sensitive* n'y est pas : c'est un Issue field (§6.3), affiché dans la barre latérale de l'issue, pour garder une seule source ;
 - `.github/ISSUE_TEMPLATE/config.yml` : renvoi des failles vers le signalement privé.
 
 ## 8. Ordre conseillé

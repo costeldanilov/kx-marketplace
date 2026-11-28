@@ -252,7 +252,7 @@ tracker:
     acceptance_criteria: "section:Acceptance criteria"   # section du formulaire d'issue
     decisions: "section:Decisions"
     priority: "project:Priority"                         # champ du Project ; la première option est la plus haute
-    sensitive: "project:Sensitive"
+    sensitive: "issue-field:Sensitive"                   # Issue field (§2.13)
     class: "project:Size"                                # poids du ticket (§3.6), écrit par `weigh`
     iso27001: "label:kx:iso27001"
     gdpr: "label:kx:gdpr"
@@ -335,7 +335,7 @@ Règles :
 - **Un schéma versionné.** `schema: kx.profile/1`. Un script valide le fichier contre un schéma JSON fourni par `kx-core`.
 - **Le profil est une zone sensible.** Le modifier change les contrôles.
 - **Un expert, une correspondance.** Les valeurs de `states`, `fields` et `groups` sont lues par l'expert déclaré. L'exemple suit l'expert `github` (§2.13). Chaque expert décrit sa propre forme de valeurs.
-- **[NV]** Forme des valeurs de `fields` (`section:`, `project:`, `label:`, `comment:`) : à fixer avec l'expert `github` à l'étape de conception.
+- **[NV]** Forme des valeurs de `fields` (`section:`, `project:`, `issue-field:`, `label:`, `comment:`) : à fixer avec l'expert `github` à l'étape de conception.
 
 
 ### 2.4 Tracker : rôles des états
@@ -627,6 +627,11 @@ Faits vérifiés (A60 à A64) :
 - **[NV]** Les types d'issues sont disponibles sur le dépôt d'un compte personnel (la documentation parle des organisations).
 - **[NV]** L'écriture par l'API Checks est réservée aux GitHub Apps ; un statut de commit peut être publié par tout jeton.
 - **[NV]** Le passage en revue d'un fil (« resolve conversation ») n'existe qu'en GraphQL. Piste : appel GraphQL par `urllib`, toujours sans dépendance (D31).
+- **[V]** Les **Issue fields** : champs définis par le propriétaire du dépôt (texte, nombre, date, choix simple ou multiple), posés sur l'issue elle-même et visibles dans tout Project. Ils se modifient dans les réglages du propriétaire. Lecture par GraphQL : `Issue.issueFieldValues` et, pour la définition et les options, `Repository.issueFields`. La lecture par le compte (`User.issueFields`) est refusée. Écriture : mutation `setIssueFieldValue`. (Essai sur le dépôt du marketplace, 2026-11-28)
+- **[V]** La chronologie GraphQL de l'issue trace les Issue fields : `IssueFieldAddedEvent` (auteur, date, champ, valeur), `IssueFieldChangedEvent` (valeurs avant et après), `IssueFieldRemovedEvent`. La chronologie REST montre l'événement et son auteur, sans la valeur. (Essai, 2026-11-28)
+- **[V]** La chronologie GraphQL trace aussi `Status` : `ProjectV2ItemStatusChangedEvent` donne l'auteur, la date, l'ancien et le nouveau statut, sur un Project de compte personnel. Le passage automatique à Backlog est signé `github-project-automation`, avec `wasAutomated: false` : ne pas se fier à ce booléen. (Essai, 2026-11-28)
+- **[NV]** `setIssueFieldValue` accepte `suggest`, `rationale` et `confidence` (schéma GraphQL) : une valeur **proposée**, que l'humain accepte ou refuse. Comportement à essayer.
+- **[NV]** Disponibilité des Issue fields hors aperçu, et sur les comptes de tous les plans.
 - **[NV]** L'API REST ne rend pas l'historique des modifications du corps d'une issue. L'événement `issues` `edited` de GitHub Actions porte l'ancien texte (`changes.body.from`) et l'auteur de la modification.
 
 #### Écart majeur avec Azure DevOps
@@ -639,11 +644,11 @@ Le tableau reprend les mêmes rôles que sur les autres forges. L'état du ticke
 
 | Rôle | Porté par | Remarque |
 |---|---|---|
-| État (`backlog` … `done`) | Champ `Status` du Project : Backlog, Refinement, Ready, In progress, Blocked, In review, Test, Verified, Done ; `done` ferme aussi l'issue « completed » | Lisible et modifiable par l'API REST des Projects (A63). **[NV]** Historique des changements de `Status`, avec leur auteur, lisible par REST |
+| État (`backlog` … `done`) | Champ `Status` du Project : Backlog, Refinement, Ready, In progress, Blocked, In review, Test, Verified, Done ; `done` ferme aussi l'issue « completed » | Lisible et modifiable par l'API REST des Projects (A63). Historique, avec l'auteur et les valeurs : chronologie GraphQL de l'issue (`ProjectV2ItemStatusChangedEvent`, ci-dessus) |
 | `acceptance_criteria` | Section *Acceptance criteria* du formulaire d'issue, `AC-1`, `AC-2`… | Un formulaire d'issue rend chaque champ sous un titre de niveau 3 (**[NV]**) |
 | `decisions` | Section *Decisions* du formulaire | Idem |
 | `priority` | Champ `Priority` du Project (P0 à P4, P0 le plus urgent) | Pas de priorité native sur GitHub. Des codes, pas des mots : `critical` et `high` désignent déjà la gravité d'une faille (§2.3, `block_at`) |
-| `sensitive` | Champ `Sensitive` du Project (Yes, No) | Pas de booléen dans un Project |
+| `sensitive` | **Issue field** `Sensitive`, choix simple (Yes, No) | Porté par l'issue, pas par le Project : il suit le ticket dans tout Project, et chaque changement est tracé avec son auteur et ses valeurs |
 | `iso27001`, `gdpr` | Labels `kx:iso27001`, `kx:gdpr` | Utilisés par `kx-compliance` |
 | `blocked_from` | Commentaire de trace de l'expert, avec un marqueur HTML caché | Pas de champ libre sur une issue |
 | Classe du ticket (§3.6) | Champ `Size` du modèle Kanban (S, M, L, XL ; option XS retirée) | Écrit par le script `weigh`, pas une estimation humaine. La description du champ du modèle ne se modifie pas : le guide le dit |
@@ -655,8 +660,8 @@ Contrôle des gestes interdits :
 
 1. L'expert `kx-github` refuse à une identité d'agent les passages à `ready`, `test` et `done`, et toute écriture dans les critères.
 2. Un workflow `kx-tracker-guard`, déclenché par `issues` `edited`, détecte une modification des critères après `ready` : statut `kx/criteria-locked` en échec sur les PR liées, et commentaire.
-3. `Sensitive` est un champ du Project : sa modification ne déclenche pas `issues` `edited`. Au passage à `ready`, l'expert écrit un commentaire de trace avec un marqueur HTML caché : empreinte des critères, valeur de `Sensitive`, date. `criteria-locked` compare à chaque exécution du job `guards` la valeur actuelle à cette trace. **[NV]** L'historique des modifications d'un commentaire, avec son auteur, est lisible par l'API : une trace modifiée à la main doit être détectée.
-4. **[NV]** Un changement de `Status` ne déclenche pas de workflow sur un Project de compte personnel (événement `projects_v2_item` réservé aux organisations). Piste : contrôle planifié qui compare les `Status` à la chronologie des issues, et alerte.
+3. `criteria-locked` lit la chronologie GraphQL de l'issue, à chaque exécution du job `guards` : la date du dernier passage à `ready` (`ProjectV2ItemStatusChangedEvent`), puis les événements de l'Issue field `Sensitive` depuis cette date. Un passage de Yes à No, ou un retrait de la valeur, sans nouveau passage à `ready` fait échouer `kx/criteria-locked`. Aucun commentaire de trace n'est nécessaire.
+4. **[NV]** Un changement de `Status` ou d'un Issue field ne déclenche pas de workflow sur un compte personnel (événement `projects_v2_item` réservé aux organisations ; événement des Issue fields à vérifier). Piste : contrôle planifié qui lit la chronologie des issues ouvertes (ci-dessus) et signale les passages à `ready`, `test` ou `done` faits par une identité d'agent.
 
 Limite à dire : GitHub ne bloque pas le geste avant qu'il ait lieu, contrairement aux règles de processus d'Azure DevOps. Le contrôle est fait par l'expert, puis après coup.
 
@@ -696,10 +701,10 @@ Sur GitHub, l'auteur d'une PR ne peut pas l'approuver lui-même. La dérogation 
 | Opération | Moyen GitHub | Remarque |
 |---|---|---|
 | `identity.whoami` | Utilisateur courant, ou App de l'installation | — |
-| `ticket.get` | Issue, labels, corps découpé en sections ; élément du Project et ses champs (`Status`, `Priority`, `Sensitive`, `Size`) | La révision couvre l'issue et l'élément du Project : la plus récente des deux dates `updated_at`. Le Project est désigné dans le profil (`tracker.project` : propriétaire et numéro) |
-| `ticket.history` | Chronologie de l'issue (événements de labels) | Corps : voir **[NV]** |
+| `ticket.get` | Issue, labels, corps découpé en sections, Issue fields (`Sensitive`) ; élément du Project et ses champs (`Status`, `Priority`, `Size`) | La révision couvre l'issue et l'élément du Project : la plus récente des deux dates `updated_at`. Le Project est désigné dans le profil (`tracker.project` : propriétaire et numéro) |
+| `ticket.history` | Chronologie GraphQL de l'issue : labels, Issue fields, `Status` du Project, avec auteur et valeurs | Corps : voir **[NV]** |
 | `ticket.create`, `ticket.comment` | Issue, commentaire | — |
-| `ticket.apply` | Champ `Status` et champs du Project ; labels ; sections du corps | Écriture conditionnelle approchée : relecture de la révision (issue et élément) juste avant l'écriture. **[NV]** Aucune écriture conditionnelle native |
+| `ticket.apply` | Champ `Status` et champs du Project ; Issue fields (`setIssueFieldValue`) ; labels ; sections du corps | Écriture conditionnelle approchée : relecture de la révision (issue et élément) juste avant l'écriture. **[NV]** Aucune écriture conditionnelle native |
 | `ticket.worklog` | — | `unsupported` : GitHub n'a pas de temps passé |
 | `change.open` | PR avec `Refs #<n>` dans le corps | Jamais `Closes #<n>` : la fusion fermerait l'issue, alors que `done` est un geste humain |
 | `change.get`, `change.files` | PR, fichiers de la PR | — |
@@ -985,7 +990,7 @@ Points ouverts :
   - chaque critère déclare sa méthode de vérification ; selon le poids du ticket, il reçoit ses scénarios Given / When / Then (D92) ;
   - la skill propose le poids du ticket (§3.6) et un découpage si la classe est XL ;
   - chaque critère dit comment le vérifier (test, commande, observation) ;
-  - `sensitive` est proposé à `true` si un chemin probable touche une zone ;
+  - `sensitive` est proposé à `true` si un chemin probable touche une zone. Sur GitHub, la proposition peut devenir une suggestion de l'Issue field, que l'humain accepte ou refuse (**[NV]**, §2.13) ;
   - la skill ne passe jamais le ticket en `ready`.
 - **Erreurs** : identité membre de `agents` (`stopped` : un agent n'écrit pas les critères) ; ticket déjà en `ready` ou au-delà (`needs-human`).
 - Le contrôle de la langue des critères est délégué à la skill de rédaction contrôlée `scribe` (§3.4, D54, D106).
@@ -1133,7 +1138,7 @@ Un critère `AC-n` en langue contrôlée est une phrase, pas une preuve. Pour qu
 | Étape | Qui | Ce qui se passe |
 |---|---|---|
 | Spécifier | PO, Team Lead ou chef de projet, avec `ticket specify` et `scribe` | Chaque critère reçoit un ou plusieurs scénarios Given / When / Then, dans la langue contrôlée du profil, dans `features/<ticket>/*.feature` (chemin du profil). Chaque scénario porte l'étiquette de son critère (`@AC-1`). |
-| Figer | Script `criteria-locked` | À `ready`, l'empreinte des fichiers `.feature` du ticket est notée avec celle des critères. La valeur de `sensitive` est notée avec elles. Les modifier ensuite demande un nouveau passage par `ready`. |
+| Figer | Script `criteria-locked` | À `ready`, l'empreinte des fichiers `.feature` du ticket est notée avec celle des critères. Les changements de `sensitive` se lisent dans la chronologie de l'issue (§2.13). Les modifier ensuite demande un nouveau passage par `ready`. |
 | Implémenter | Neo ou le développeur | Il écrit le code et les liaisons des étapes (Reqnroll, Playwright…). Il boucle en local jusqu'à ce que tous les scénarios du ticket passent. Cette boucle est un contrôle de l'auteur, pas une validation. |
 | Relire | `review`, Sherlock, le pair | Recherche des **étapes creuses** : liaison vide, assertion toujours vraie, système sous test remplacé par un faux, attente fixe à la place d'une vérification. |
 | Vérifier | Galileo | Relance les mêmes scénarios sur `dev`, dans un contexte neuf. Son verdict seul fait passer le ticket en `verified`. |
@@ -1772,7 +1777,7 @@ Tous en Python 3, bibliothèque standard seulement (D31). Entrée : identifiant 
 |---|---|---|
 | `pr-size` | Nombre de fichiers et de lignes modifiés | Seuil du profil dépassé ; toujours sous 100 fichiers (limite de Copilot) |
 | `sensitive` | Chemins modifiés contre `sensitive-zones.yml` | Zone touchée alors que le ticket dit `sensitive: false` ; valeur de `sensitive` absente ; contrôle exigé par la zone non réussi |
-| `criteria-locked` | Révisions du champ des critères, empreinte des fichiers `.feature` du ticket et valeur de `sensitive`, comparées à la trace écrite à `ready` | Critères ou scénarios modifiés après `ready` ; `sensitive` passé de `true` à `false` ou effacé après `ready` ; trace de `ready` absente ou modifiée ; dans tous les cas sans nouveau passage par `ready` |
+| `criteria-locked` | Révisions du champ des critères, empreinte des fichiers `.feature` du ticket et changements de `sensitive` lus dans la chronologie de l'issue depuis le dernier passage à `ready` | Critères ou scénarios modifiés après `ready` ; `sensitive` passé de `true` à `false` ou effacé après `ready` ; dans tous les cas sans nouveau passage par `ready` |
 | `plan-gate` | Présence et validation du plan selon D75 | Plan exigé absent ou non validé ; plan modifié après sa validation |
 | `risk-score` | Score de risque par fichier (D6) | Jamais : il informe `review-pr` et Sherlock |
 | `peer-approval` | Approbateur humain, distinct de l'auteur et de celui qui a délégué ; votes des membres de `agents` et des bots ignorés ; dérogation solo déclarée et valide | Approbateur interdit ; dérogation absente ou périmée. **[NV]** Relance du statut à chaque vote |
