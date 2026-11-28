@@ -251,8 +251,9 @@ tracker:
   fields:                        # rôle → support du rôle (§2.13)
     acceptance_criteria: "section:Acceptance criteria"   # section du formulaire d'issue
     decisions: "section:Decisions"
-    priority: "project:Priority"                         # champ du Project
+    priority: "project:Priority"                         # champ du Project ; la première option est la plus haute
     sensitive: "project:Sensitive"
+    class: "project:Size"                                # poids du ticket (§3.6), écrit par `weigh`
     iso27001: "label:kx:iso27001"
     gdpr: "label:kx:gdpr"
     blocked_from: "comment:kx-blocked-from"             # commentaire de trace de l'expert
@@ -364,7 +365,7 @@ Règles communes à tous les experts :
 | Rôle | Type | Obligatoire à `ready` | Écrit par | Contenu |
 |---|---|---|---|---|
 | `acceptance_criteria` | Texte | Oui | Humain | Critères numérotés `AC-1`, `AC-2`…, dans la langue contrôlée du profil (`language.controlled`) |
-| `priority` | Entier | Oui | Humain | Priorité native |
+| `priority` | Valeur ordonnée : la première est la plus haute | Oui | Humain | Priorité native, ou champ du tracker |
 | `sensitive` | Booléen | Oui | Humain | Le ticket touche une zone sensible |
 | `iso27001` | Booléen | Non | Humain | Le ticket relève d'une exigence de sécurité |
 | `gdpr` | Booléen | Non | Humain | Le ticket traite des données personnelles |
@@ -395,7 +396,8 @@ zones:
 - La zone `factory` est fournie par défaut et ne peut pas être retirée. Elle protège les contrôles eux-mêmes.
 - `checks` nomme des statuts de PR publiés par un garde-fou ou un job (§6.3, §6.4), par exemple `kx/security` ou `kx/owner-review`. Un nom inconnu est une erreur.
 - `kx/owner-review` est publié par le garde-fou `owner-review` (§6.4) : un propriétaire humain des chemins touchés, qui n'est pas l'auteur, a approuvé le dernier push. La revue native de `CODEOWNERS` ne publie pas de statut ; ce garde-fou la rend lisible par `sensitive`.
-- Le garde-fou `sensitive` compare les chemins modifiés d'une PR aux `paths`. Il bloque si le ticket dit `sensitive: false` alors qu'une zone est touchée, ou si un contrôle exigé n'a pas réussi.
+- Le garde-fou `sensitive` compare les chemins modifiés d'une PR aux `paths`. Il bloque si le ticket dit `sensitive: false` alors qu'une zone est touchée, si la valeur de `sensitive` est absente, ou si un contrôle exigé n'a pas réussi.
+- Limite : la détection ne porte que sur les **chemins**. Un ticket sensible par son sujet (données personnelles, règle de sécurité dans un fichier hors zone) n'est vu que si une zone couvre ce chemin. Une zone manquante se corrige dans `sensitive-zones.yml`, en zone `factory`.
 
 
 ### 2.8 Contrôle de conformité : skill `doctor`
@@ -638,14 +640,14 @@ Le tableau reprend les mêmes rôles que sur les autres forges. L'état du ticke
 | État (`backlog` … `done`) | Champ `Status` du Project : Backlog, Refinement, Ready, In progress, Blocked, In review, Test, Verified, Done ; `done` ferme aussi l'issue « completed » | Lisible et modifiable par l'API REST des Projects (A63). **[NV]** Historique des changements de `Status`, avec leur auteur, lisible par REST |
 | `acceptance_criteria` | Section *Acceptance criteria* du formulaire d'issue, `AC-1`, `AC-2`… | Un formulaire d'issue rend chaque champ sous un titre de niveau 3 (**[NV]**) |
 | `decisions` | Section *Decisions* du formulaire | Idem |
-| `priority` | Champ `Priority` du Project (P1 à P4) | Pas de priorité native sur GitHub |
+| `priority` | Champ `Priority` du Project (P0 à P4, P0 le plus urgent) | Pas de priorité native sur GitHub. Des codes, pas des mots : `critical` et `high` désignent déjà la gravité d'une faille (§2.3, `block_at`) |
 | `sensitive` | Champ `Sensitive` du Project (Yes, No) | Pas de booléen dans un Project |
 | `iso27001`, `gdpr` | Labels `kx:iso27001`, `kx:gdpr` | Utilisés par `kx-compliance` |
 | `blocked_from` | Commentaire de trace de l'expert, avec un marqueur HTML caché | Pas de champ libre sur une issue |
-| Classe du ticket (§3.6) | Champ `Class` du Project (S, M, L, XL) | Écrit par le script `weigh` |
+| Classe du ticket (§3.6) | Champ `Size` du modèle Kanban (S, M, L, XL ; option XS retirée) | Écrit par le script `weigh`, pas une estimation humaine. La description du champ du modèle ne se modifie pas : le guide le dit |
 | Type de ticket | Type d'issue si disponible, sinon label `kx:type/<type>` | Voir **[NV]** ci-dessus |
 
-Automatisations du Project : « Item added » → Backlog ; « Item closed » **désactivé**, car une fermeture « not planned » n'est pas une livraison ; « Pull request merged » **désactivé**, car une fusion mène à `test`. `done` reste un geste humain : après la livraison, l'humain passe `Status` à Done, puis ferme l'issue « completed ». Déplacer la carte ne ferme pas l'issue. Un ticket abandonné est fermé « not planned » sans passer à Done.
+Automatisations du Project : « Item added » → Backlog ; « Item closed » **désactivé**, car une fermeture « not planned » n'est pas une livraison ; « Pull request merged » **désactivé**, car une fusion mène à `test` ; « Pull request linked to issue » → In review ; « Auto-close issue » **activé** : le passage à Done ferme l'issue « completed ». `done` reste un geste humain : après la livraison, l'humain passe `Status` à Done. Un ticket abandonné est fermé « not planned » sans passer à Done.
 
 Contrôle des gestes interdits :
 
@@ -691,7 +693,7 @@ Sur GitHub, l'auteur d'une PR ne peut pas l'approuver lui-même. La dérogation 
 | Opération | Moyen GitHub | Remarque |
 |---|---|---|
 | `identity.whoami` | Utilisateur courant, ou App de l'installation | — |
-| `ticket.get` | Issue, labels, corps découpé en sections ; élément du Project et ses champs (`Status`, `Priority`, `Sensitive`, `Class`) | La révision couvre l'issue et l'élément du Project : la plus récente des deux dates `updated_at`. Le Project est désigné dans le profil (`tracker.project` : propriétaire et numéro) |
+| `ticket.get` | Issue, labels, corps découpé en sections ; élément du Project et ses champs (`Status`, `Priority`, `Sensitive`, `Size`) | La révision couvre l'issue et l'élément du Project : la plus récente des deux dates `updated_at`. Le Project est désigné dans le profil (`tracker.project` : propriétaire et numéro) |
 | `ticket.history` | Chronologie de l'issue (événements de labels) | Corps : voir **[NV]** |
 | `ticket.create`, `ticket.comment` | Issue, commentaire | — |
 | `ticket.apply` | Champ `Status` et champs du Project ; labels ; sections du corps | Écriture conditionnelle approchée : relecture de la révision (issue et élément) juste avant l'écriture. **[NV]** Aucune écriture conditionnelle native |
@@ -1766,7 +1768,7 @@ Tous en Python 3, bibliothèque standard seulement (D31). Entrée : identifiant 
 | Script | Contrôle | Échec si… |
 |---|---|---|
 | `pr-size` | Nombre de fichiers et de lignes modifiés | Seuil du profil dépassé ; toujours sous 100 fichiers (limite de Copilot) |
-| `sensitive` | Chemins modifiés contre `sensitive-zones.yml` | Zone touchée alors que le ticket dit `sensitive: false`, ou contrôle exigé par la zone non réussi |
+| `sensitive` | Chemins modifiés contre `sensitive-zones.yml` | Zone touchée alors que le ticket dit `sensitive: false` ; valeur de `sensitive` absente ; contrôle exigé par la zone non réussi |
 | `criteria-locked` | Révisions du champ des critères et empreinte des fichiers `.feature` du ticket depuis `ready` | Critères ou scénarios modifiés après `ready` sans nouveau passage par `ready` |
 | `plan-gate` | Présence et validation du plan selon D75 | Plan exigé absent ou non validé ; plan modifié après sa validation |
 | `risk-score` | Score de risque par fichier (D6) | Jamais : il informe `review-pr` et Sherlock |
