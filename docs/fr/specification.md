@@ -41,22 +41,24 @@ Vocabulaire :
 - « Autonome » qualifie le travail, pas la décision. Les agents enchaînent les étapes sans aide ; l'humain garde l'approbation, la fusion, la release et le deploy (§1.4).
 - **OKF** — Open Knowledge Format, le format du bundle de connaissances (§2.0).
 
-### 1.1 bis Ligne directrice : deux modes, une seule boîte à outils
+### 1.1 bis Ligne directrice : trois modes, une seule boîte à outils (D122)
 
-Le développeur choisit son mode pour chaque ticket.
+Le développeur choisit son mode pour chaque ticket. L'usine n'est pas imposée : c'est une trousse à outils, et l'on prend ceux que le chantier demande. Un besoin simple ne justifie pas le coût de cinq agents ; un développeur peut aussi préférer coder lui-même, dans son IDE, avec l'assistant de son choix.
 
-| | Mode pilote | Mode tour de contrôle |
-|---|---|---|
-| Qui code | Le développeur, dans sa session Claude Code | Neo, sur délégation |
-| Rôle du développeur | Il fait le travail avec les skills | Il suit, et intervient aux validations |
-| Outils | Skills et agents du plugin | Les mêmes skills, préchargées dans Neo |
-| Contrôles sur la PR | Tous | Tous, identiques |
+| | Mode manuel | Mode pilote | Mode tour de contrôle |
+|---|---|---|---|
+| Qui code | Le développeur, dans son IDE, avec ou sans assistant (GitHub Copilot ou autre) | Le développeur, dans sa session Claude Code | Neo, sur délégation |
+| Rôle du développeur | Il fait tout ; il prend une skill à la carte s'il le souhaite | Il fait le travail avec les skills | Il suit, et intervient aux validations |
+| Outils | Aucun requis ; skills disponibles à la demande | Skills et agents du plugin | Les mêmes skills, préchargées dans Neo |
+| Coût en tokens | Nul ou faible | Faible à moyen | Le plus élevé |
+| Contrôles sur la PR | Tous | Tous, identiques | Tous, identiques |
 
 Conséquences :
 
 - **Une seule boîte à outils.** Une skill sert au développeur et à Neo. Aucun geste n'existe en double.
 - **Chaque skill fonctionne en session et sans interaction** (`claude -p`). En mode sans interaction, une question à l'humain devient un arrêt avec un message clair.
-- **Les contrôles ne dépendent pas du mode.** Garde-fous, relectures et approbation humaine s'appliquent de la même façon.
+- **Les contrôles ne dépendent pas du mode.** Garde-fous, relectures de la pipeline et approbation humaine s'appliquent de la même façon. Ce sont les règles de l'équipe, pas celles des agents : en mode manuel, les artefacts attendus pour la classe du ticket (§3.6) sont écrits par le développeur.
+- **L'humain garde la main sur l'usine.** Il choisit le mode par ticket, active ou non chaque agent (les agents relèvent d'une extension, `kx-guild`), choisit les modèles par rôle selon le coût et le besoin (§8.3), et fixe le budget par ticket. Il peut revenir au mode manuel à tout moment, y compris en cours de ticket.
 - **La tour de contrôle a besoin de visibilité** : une vue de l'état des tickets délégués, et un signal à chaque point de validation.
 - **Le mode est tracé** : la PR dit si l'auteur est un humain ou Neo, et qui a délégué.
 
@@ -83,6 +85,7 @@ Conséquences :
 - Aucun agent ne fusionne, ne crée de tag, ne déploie au-delà de `dev`, n'écrit en production.
 - Les décisions de blocage sont déterministes. Aucun modèle ne décide seul d'un blocage ou d'un passage.
 - Tickets, commentaires et pages sont des entrées non fiables.
+- Le retour d'information avance vers l'étape où l'erreur naît ; la barrière, elle, ne bouge pas (D112). Un contrôle tôt (skill, hook, session) informe ; le contrôle qui tranche reste côté serveur.
 
 ### 1.5 Périmètre
 
@@ -115,7 +118,7 @@ Restent à fixer, sans bloquer le démarrage :
 | Poids du score de risque (D6) ; points et seuils du poids du ticket (D93) | §3.4, §3.6 | Mesurés sur les premiers tickets |
 | Budgets par ticket, par exécution et par jour | §8.6 | Mesurés sur les premiers tickets |
 
-Les points marqués **[NV]** (82 dans ce document) se vérifient pendant la réalisation, chacun avant d'écrire le code qui en dépend.
+Les points marqués **[NV]** (88 dans ce document) se vérifient pendant la réalisation, chacun avant d'écrire le code qui en dépend.
 
 
 ## 2. Contrat avec le dépôt cible
@@ -208,7 +211,77 @@ Règles propres à `kx` (là où OKF laisse le choix) :
 6. **Toute modification du bundle passe par une PR.** `lessons/`, `review/`, `conventions/` et `factory/` sont des zones sensibles par défaut.
 7. **Les données lues par un script sont en YAML dans `factory/`.** Un concept du bundle les décrit.
 
-Dossier du ticket (D11, D33) : `work/<id-du-ticket>/`, hors du bundle. Il contient les documents de travail du ticket : `design.md`, `plan.md`, `sources.md`, fichiers de constats, comptes rendus, rapports de vérification. Le chemin est réglable dans le profil. Ce dossier n'est pas de la connaissance durable : ce qui doit rester devient un ADR ou une leçon.
+Dossier du ticket (D11, D33, D117) : `work/<id-du-ticket>/`, hors du bundle, chemin réglable dans le profil. Ce dossier n'est pas de la connaissance durable : ce qui doit rester devient un ADR ou une leçon. Son organisation est décrite au §2.2.1.
+
+#### 2.2.1 Le dossier du ticket : un contexte qui s'enrichit à chaque étape (D116, D117)
+
+**Pourquoi.** Un agent ne sait que ce qu'on lui donne à lire. Chaque étape du cycle repart d'un contexte neuf (§8.6) : ce qu'une étape a compris et qui n'est pas écrit est perdu pour la suivante. Le dossier du ticket est donc le **contrat entre les étapes**. Chaque étape lit ce que les précédentes ont validé, et y ajoute ce que les suivantes devront savoir.
+
+C'est la forme du shift left appliquée au contexte (D112) : on enrichit le contexte le plus tôt possible, là où le besoin est connu. Une question tranchée pendant la découverte n'est plus posée au développeur ; un exemple fourni par le PO devient un test ; une ambiguïté levée avant `ready` ne devient pas un aller-retour de revue. Plus les rails sont posés tôt, moins le train déraille, et moins le développeur est appelé.
+
+**Règles.**
+
+1. **Le dossier, pas la conversation.** La sortie d'une étape est un ensemble de fichiers, jamais un historique de session. L'étape suivante ne lit que le dossier, le bundle et le code.
+2. **Un index lu en premier.** `manifest.yml` liste chaque artefact : chemin, type, étape qui l'a produit, statut, auteur, validateur, empreinte. Une étape commence par lui.
+3. **Brouillon ou validé.** Un artefact est `draft` tant qu'un humain ne l'a pas validé. Seuls les artefacts `validated` sont des **rails** : l'agent les suit. Un brouillon est une hypothèse, jamais une raison de s'écarter d'une convention relue (§2.2, niveaux de confiance).
+4. **Figé à `ready`.** Les artefacts de découverte qui définissent le comportement attendu (`ticket.md`, `discovery/examples/`, `features/`) sont figés à `ready`, comme les critères. Leur empreinte est notée dans `manifest.yml` ; `criteria-locked` contrôle qu'ils ne changent pas sans nouveau passage par `ready`.
+5. **Proportionné au poids.** La classe du ticket (§3.6) dit quels artefacts sont attendus. Un ticket S n'a pas besoin d'un modèle de flux.
+6. **Aucune donnée personnelle brute.** Les règles de la collecte omnicanale (§3.4) s'appliquent à tout le dossier : référence, résumé, extraits courts anonymisés. Le contenu brut reste dans son système d'origine.
+7. **Une question déjà tranchée n'est pas reposée.** Avant de demander à un humain, une skill ou un agent cherche la réponse dans `discovery/decisions.md`, puis dans le bundle. S'il pose quand même une question, il note pourquoi la réponse trouvée ne suffisait pas.
+
+**Organisation.**
+
+```text
+work/<id>/
+  manifest.yml              # index : artefacts, étape, statut, validateur, empreinte
+  ticket.md                 # besoin, périmètre, hors périmètre, critères AC-n (copie du ticket, figée à ready)
+  discovery/                # ticket specify (étape spec)
+    sources.md              # inventaire des sources ; pour chaque AC-n, les sources qui le fondent
+    extracts/               # un résumé par source, avec extraits courts anonymisés
+    decisions.md            # journal du dialogue : question, réponse retenue, qui a tranché, date
+    open-questions.md       # questions restées ouvertes, avec leur propriétaire
+    glossary.md             # termes métier du ticket, reliés aux concepts de `domain/` du bundle
+    examples/               # cas concrets : entrées, sorties attendues, cas limites, contre-exemples
+    models/                 # flux, séquence ou états (Mermaid), esquisse de contrat d'API, maquette d'écran
+  design/                   # ticket plan (étape plan)
+    design.md
+    plan.md
+    adr/                    # brouillons d'ADR
+  build/                    # implémentation et relectures (étapes code et pr)
+    journal.md              # écarts au plan et pourquoi ; décisions prises en codant
+    findings/               # constats au format kx.finding, avec found_at (D113)
+  verify/                   # ticket verify (étape test)
+    report.md               # matrice de traçabilité et verdict par critère
+    evidence/               # preuves : sorties de commandes, captures, journaux de test
+```
+
+Les scénarios Given / When / Then restent dans `features/<ticket>/` (chemin du profil, D92), car ils s'exécutent avec le code ; `manifest.yml` les référence.
+
+**Artefacts de découverte, selon la classe du ticket.**
+
+| Artefact | S | M | L | XL | Ce qu'il apporte à l'étape suivante |
+|---|---|---|---|---|---|
+| `ticket.md`, `sources.md` | Oui | Oui | Oui | Découpage proposé | Le besoin et sa justification |
+| `decisions.md`, `open-questions.md` | Si dialogue | Oui | Oui | — | Le développeur ne repose pas les questions tranchées |
+| `examples/` | Un exemple | Oui | Oui | — | Des données de test réelles ; une vérification qui ne dépend pas d'une interprétation |
+| `glossary.md` | — | Si termes nouveaux | Oui | — | Le même mot désigne la même chose dans le code, les tests et le ticket |
+| `models/` | — | Si flux ou états | Oui | — | La conception part d'un comportement décrit, pas d'une phrase |
+
+Exemple, sur le fil conducteur « Rejeter une facture sans SIREN acheteur » (classe M) : `examples/` contient une facture valide, une facture sans SIREN acheteur, une facture avec un SIREN mal formé, et le message de rejet attendu pour chacune ; `decisions.md` note que le contrôle porte sur la présence et le format du SIREN, pas sur son existence dans un registre, et qui l'a tranché ; `models/` contient le flux de réception jusqu'au rejet. Neo écrit ses tests à partir de ces fichiers ; Galileo vérifie avec les mêmes.
+
+**Qui lit quoi.**
+
+| Étape | Lit | Écrit |
+|---|---|---|
+| Spécifier (`ticket specify`) | Sources, bundle | `ticket.md`, `discovery/`, `features/` |
+| Concevoir (`ticket plan`) | `ticket.md`, `discovery/` validé, bundle, code | `design/` ; chaque tâche cite les critères, exemples et décisions qu'elle couvre |
+| Coder (développeur ou Neo) | `design/` validé, `discovery/examples/`, `features/` | Code, tests, `build/journal.md` |
+| Relire (`review`, `security-review`, Sherlock) | Le différentiel, `ticket.md`, `design/`, `build/journal.md` | `build/findings/` |
+| Vérifier (`ticket verify`) | Tout le dossier, la PR fusionnée, l'environnement de test | `verify/` |
+
+**Mesure.** Une question posée à un humain après `ready`, dont la réponse aurait pu être tranchée pendant la découverte, est un constat d'étape `spec` trouvé tard (D113). L'agent `mentor` (`kx-guild`) repère celles qui se répètent et propose d'enrichir les questions de `ticket specify` ou le bundle.
+
+- **[NV]** Lecture d'un fichier Mermaid, d'une image de maquette et d'un PDF de tableau blanc par le modèle, dans tous les outils ciblés (D26).
 
 ### 2.3 Profil du dépôt : `factory/profile.yml`
 
@@ -228,6 +301,7 @@ repository:
   default_branch: main
   protected_branches: [main, "release/*"]
   agent_branch_prefix: agents/
+  spec_branch_prefix: spec/        # dossier du ticket avant ready (D120)
   ticket_folder: work/{ticket}
 
 forge:
@@ -262,6 +336,8 @@ tracker:
     testers: <équipe>
     agents: <équipe ou App>
     adr_approvers: <équipe>         # décident des ADR (D90)
+    tech_referents: <équipe>        # sollicités pendant la spécification (D119)
+    ux_approvers: <équipe>          # valident maquettes et parcours (D119)
 
 review:
   pr_size: { max_files: 30, max_lines: 600 }     # exemples, à fixer par dépôt
@@ -985,7 +1061,7 @@ Points ouverts :
 - **Déclencheur** : un besoin à transformer en ticket, ou un ticket en `backlog` ou `refinement` à compléter.
 - **Entrées** : le besoin en langage libre ; le bundle (`domain`, `decisions`, `architecture`).
 - **Étapes** : pose les questions manquantes ; rédige le constat et le périmètre ; rédige les critères d'acceptation ; propose `priority`, `sensitive`, `iso27001`, `gdpr`, `decisions` avec la raison de chaque valeur ; compare le périmètre aux zones sensibles.
-- **Sorties** : le ticket créé ou mis à jour en `refinement` ; une copie dans le dossier du ticket.
+- **Sorties** : le ticket créé ou mis à jour en `refinement` ; dans le dossier du ticket, `ticket.md`, `discovery/` et `manifest.yml` (§2.2.1), avec les artefacts attendus pour la classe du ticket.
 - **Opérations** : `ticket.get`, `ticket.create`, `ticket.apply`.
 - **Contrôles** :
   - chaque critère est numéroté `AC-n`, écrit dans la langue de travail du profil, en rédaction contrôlée, et dit une seule chose vérifiable ;
@@ -1038,6 +1114,7 @@ Méthode du dialogue (D71), idées reprises de « grill-me » (les travaux étud
 - **Fin explicite**, ce que « grill-me » ne prévoit pas : le dialogue s'arrête quand chaque critère d'acceptation a une réponse, une source et une méthode de vérification, ou quand l'humain arrête. Les questions restées ouvertes sont listées dans le ticket.
 - **Budget** : nombre de questions et coût bornés par le profil. Au-delà, la skill propose de découper le ticket.
 - **Trace** : chaque décision prise pendant le dialogue est notée dans le dossier du ticket (question, réponse retenue, qui a tranché). Une décision d'architecture devient une proposition d'ADR.
+- **Artefacts de découverte** : pendant le dialogue, la skill range ce qu'elle apprend au bon endroit du dossier (§2.2.1) : une décision dans `decisions.md`, un cas concret cité par l'humain dans `examples/`, un terme métier dans `glossary.md`, un flux décrit au tableau blanc dans `models/`. Elle propose ; l'humain valide chaque artefact, qui passe alors `validated` dans `manifest.yml`. Avant `ready`, la skill liste les artefacts attendus pour la classe et ceux qui manquent.
 - **Sortie compacte** : le résultat du dialogue est le ticket et son dossier, pas la conversation. La suite du cycle (Neo, `review`) repart de ces fichiers, dans un contexte neuf.
 
 #### Deux phases avant le code (D72)
@@ -1048,14 +1125,75 @@ Méthode du dialogue (D71), idées reprises de « grill-me » (les travaux étud
 | 2. Concevoir et planifier | Développeur, ou Neo | Après `ticket start`, dans `doing` | `design.md` et `plan.md` dans le dossier du ticket | `ticket plan`, ou superpowers |
 
 - **Vocabulaire** : l'état de tracker nommé « Design » désigne la spécification, pas la conception technique. Pour éviter la confusion, le rôle d'état s'appelle `refinement` dans le profil ; le nom réel reste libre (D73).
-- **La phase 1 se fait rarement dans un terminal.** Un PO ou un chef de projet travaille plutôt dans l'application Claude (web ou bureau). `ticket specify` est une skill portable : elle doit fonctionner là, avec les connecteurs de l'application (messagerie, Teams, documents). **[NV]** Chargement d'une skill de plugin dans l'application Claude ; connecteur Azure DevOps disponible. Repli : le Team Lead lance `ticket specify` en session, avec le PO.
+- **La phase 1 se fait rarement dans un terminal.** Un PO ou un chef de projet travaille plutôt dans l'application Claude (web ou bureau). `ticket specify` est une skill portable : elle doit fonctionner là, avec les connecteurs de l'application (messagerie, Teams, documents, forge). Mise en place : « Spécifier à plusieurs, depuis l'application Claude » ci-dessous (D121). Repli : le Team Lead lance `ticket specify` en session, avec le PO.
 - **La phase 2 relève du développeur.** Elle précède presque toujours le code.
+
+#### Spécifier à plusieurs, depuis l'application Claude (D119, D120, D121)
+
+La spécification est menée par le PO, mais elle n'est pas son travail seul. Chaque rôle y apporte son regard quand le ticket le concerne, par écrit, dans le dossier du ticket (§2.2.1). C'est l'idée des « trois amis » de BDD (métier, technique, test), rendue asynchrone : on ne se réunit que pour une contradiction que l'écrit ne règle pas.
+
+**Qui intervient (D119).**
+
+| Rôle | Quand la skill le sollicite | Ce qu'il apporte | Où cela va |
+|---|---|---|---|
+| PO, chef de projet | Toujours ; il mène | Sources, réponses aux questions, validation de chaque critère | `ticket.md`, `discovery/` |
+| Référent technique | Zone sensible touchée, décision d'architecture probable, ou classe L ou plus | Faisabilité, découpage, risques, valeur proposée de `sensitive` | `discovery/decisions.md`, `open-questions.md` |
+| UI/UX | Le ticket touche un écran ou un parcours | Parcours, maquette, états vide, erreur et chargement, critères d'accessibilité | `discovery/models/`, critères `AC-n` proposés |
+| Développeur | Avant `ready`, pour les classes M et plus | Pré-lecture : ce qui est ambigu ou irréalisable | `discovery/open-questions.md` |
+
+- La skill nomme le rôle sollicité et la question posée ; elle publie la demande en commentaire du ticket, avec un lien vers l'artefact concerné. **[À DÉCIDER]** mention d'une personne (`@`) ou d'une équipe, réglée dans le profil.
+- Seul le PO écrit et valide les critères (D33) ; les autres rôles proposent. Une réponse retenue est notée avec le nom de qui a tranché.
+- **Validations attendues.** Le profil dit quel rôle valide quel artefact, selon le type de ticket :
+
+```yaml
+specification:
+  validations:
+    - artifact: discovery/models/ui/*      # maquettes et parcours
+      by: ux_approvers
+    - artifact: discovery/decisions.md
+      by: tech_referents
+      when: [sensitive, class>=L]
+    - artifact: ticket.md
+      by: spec_approvers
+```
+
+- `manifest.yml` note, pour chaque artefact, qui l'a validé et quand. `ticket specify` refuse de proposer `ready` tant qu'une validation attendue manque ; le passage à `ready` reste le geste du PO.
+
+**Où vit le dossier avant `ready` (D120).** Sur une branche `spec/<id>` du dépôt, écrite par la skill au moyen de l'API de la forge. Le PO ne voit ni git ni la branche : la skill lui dit seulement que le dossier est enregistré, avec un lien.
+
+1. `ticket specify` crée `spec/<id>` depuis la branche par défaut au premier enregistrement, puis ajoute un commit à chaque enregistrement validé par le PO. Les commits portent l'identité de la personne connectée.
+2. Au passage à `ready`, l'empreinte (SHA) du dernier commit de `spec/<id>` est notée dans le ticket et dans `manifest.yml`.
+3. `ticket start` crée la branche de travail depuis la branche par défaut à jour, puis y fusionne `spec/<id>` à ce SHA exact. La PR du ticket contient donc le dossier de découverte et le code : la relecture voit le demandé à côté du fait.
+4. `criteria-locked` compare les artefacts figés de la PR au SHA noté. `spec/<id>` est supprimée après la fusion de la PR.
+
+- Le préfixe `spec/` se règle dans le profil (`repository.spec_branch_prefix`). Le ruleset de la branche par défaut s'applique : aucune écriture directe, même par l'identité du PO.
+- Les données personnelles restent hors de la branche (§2.2.1, règle 6) : une branche poussée est aussi difficile à purger qu'un commit fusionné.
+
+**Le poste du PO (D121).** L'application Claude, sur le web ou le bureau, jamais un terminal.
+
+| Élément | Mise en place | Statut |
+|---|---|---|
+| Skills `kx-` | Sur un plan Team ou Enterprise, un propriétaire de l'organisation les met à disposition dans **Organization settings > Plugins & skills**, pour tous ou pour un groupe ; sinon, chacun téléverse la skill dans **Customize > Skills** (A71) | **[V]** pour la mise à disposition ; **[NV]** comportement de `ticket specify` dans l'application (lecture des fichiers de référence, appels de connecteurs depuis une skill) |
+| Connecteur de la forge | Connecteur personnalisé vers le serveur MCP distant de la forge (§2.13 pour GitHub) ; chaque utilisateur se connecte avec son propre compte (A70) | Voir ci-dessous |
+| Connecteurs des sources | Messagerie, Teams, documents, outil de maquette : ceux de l'application | Selon l'outil |
+| Droits | Ceux du compte du PO : lecture du dépôt, écriture des issues et du Project, création de branches `spec/` | Le ruleset protège la branche par défaut |
+
+Connecteur GitHub, depuis l'application Claude :
+
+- **[V]** Un connecteur personnalisé est un serveur MCP distant, ajouté par son URL. Claude s'y connecte depuis l'infrastructure d'Anthropic, pas depuis le poste de l'utilisateur. Sur Team et Enterprise, seul un propriétaire l'ajoute pour l'organisation ; chaque membre s'y connecte ensuite avec son compte (A70).
+- **[V]** Pour un serveur qui exige un client OAuth enregistré à l'avance, l'option « Use your own OAuth client » accepte un client ID et un secret ; l'adresse de retour à déclarer chez le fournisseur est `https://claude.ai/api/mcp/auth_callback` (A70).
+- **[V]** Le serveur MCP distant de GitHub (`https://api.githubcopilot.com/mcp/`) ne prend pas en charge l'enregistrement dynamique de client (A72). Il faut donc enregistrer une OAuth App ou une GitHub App dans le compte ou l'organisation, avec l'adresse de retour ci-dessus.
+- Recommandation : une **GitHub App** plutôt qu'une OAuth App, installée sur le seul dépôt, avec les permissions minimales : *Contents* en écriture (branches `spec/`), *Issues* en écriture, *Projects* en écriture pour `Status`. Une OAuth App avec la portée `repo` donne accès à tous les dépôts du compte.
+- **[NV]** Connexion effective de l'application Claude au serveur distant de GitHub avec un client propre (la documentation d'installation de GitHub disait l'OAuth non pris en charge par Claude Desktop pour ce serveur ; la documentation de Claude décrit désormais l'option). **[NV]** Outils exposés pour écrire plusieurs fichiers en un commit sur une branche, et pour modifier un champ de Project. Repli : le Team Lead enregistre le dossier depuis Claude Code, avec le PO.
+- Dans l'application, chaque outil d'écriture du connecteur reste en « demander avant » pour le PO, sauf décision contraire de l'organisation.
+
+**Premiers pas du PO.** Une séance guidée sur un vrai petit ticket, avec le référent technique : connexion des connecteurs, un dialogue de spécification complet, la lecture du dossier produit, le passage à `ready`. **[À DÉCIDER]** une skill `onboard` par rôle (PO, référent technique, UX), qui vérifie les connecteurs et déroule un ticket d'essai sur un dépôt d'exemple.
 
 #### `ticket plan` — conception et plan (D74)
 
 - **Rôle** : à partir d'un ticket `ready` et commencé, produire la conception et le plan d'implémentation.
 - **Qui** : le développeur en session, ou Neo.
-- **Entrées** : le ticket, ses sources, le bundle (`architecture/`, `decisions/`, `conventions/`, `lessons/`), le code.
+- **Entrées** : le ticket et son dossier (`manifest.yml` d'abord, puis `discovery/` validé : exemples, décisions, modèles), le bundle (`architecture/`, `decisions/`, `conventions/`, `lessons/`), le code.
 - **Sorties** dans le dossier du ticket :
   - `design.md` : approche retenue, alternatives écartées et pourquoi, impacts (zones sensibles, données, sécurité), décisions qui demandent un ADR ;
   - `plan.md` : tâches ordonnées ; pour chaque tâche, les fichiers, les tests, les critères `AC-n` couverts ; risques ; points de contrôle.
@@ -1162,7 +1300,7 @@ Règles :
 - **Étapes** : lit le ticket ; vérifie les préconditions ; pose le verrou du ticket ; crée la branche (mode pilote : dans le checkout du développeur ; mode agent : dans un worktree hors du dépôt, spécification de `kx-guild`) ; crée le dossier du ticket ; y enregistre la révision et l'empreinte des critères ; passe le ticket en `doing`.
 - **Sorties** : branche `<préfixe>/<id>-<sujet>` ; dossier du ticket ; ticket en `doing`.
 - **Opérations** : `ticket.get`, `ticket.apply`.
-- **Contrôles** : état `ready` ; champs obligatoires présents ; branche créée depuis la branche par défaut à jour ; préfixe d'agent si l'identité est membre de `agents`.
+- **Contrôles** : état `ready` ; champs obligatoires présents ; branche créée depuis la branche par défaut à jour ; si le ticket a une branche `spec/<id>`, elle est fusionnée au SHA noté à `ready`, et seulement à ce SHA (D120) ; préfixe d'agent si l'identité est membre de `agents`.
 - **Erreurs** : ticket modifié entre la lecture et l'écriture (`conflict`, relire) ; ticket déjà pris par une autre branche (`needs-human`).
 
 #### `submit`
@@ -1184,7 +1322,7 @@ Règles :
 - **Déclencheur** : le travail semble prêt.
 - **Entrées** : le différentiel local par rapport à la branche par défaut ; le ticket ; le bundle (`conventions`, `lessons`, `decisions`) ; les règles de relecture déposées par les experts.
 - **Étapes** : relit le différentiel dans un contexte neuf quand l'outil le permet ; compare chaque critère `AC-n` au code ; cherche les écarts aux conventions et les pièges déjà notés en leçons ; classe chaque constat (bloquant, à corriger, remarque).
-- **Sorties** : un fichier de constats dans le dossier du ticket, au format fixe : identifiant, fichier, ligne, gravité, critère ou règle concerné, explication. Aucune écriture sur la forge.
+- **Sorties** : un fichier de constats dans le dossier du ticket, au format fixe : identifiant, fichier, ligne, gravité, critère ou règle concerné, explication, étape de découverte (D113). Aucune écriture sur la forge.
 - **Opérations** : `ticket.get`.
 - **Contrôles** : le relecteur ne corrige rien ; un critère sans preuve dans le code est un constat bloquant ; un constat cite toujours sa source (critère, convention, leçon).
 - **Erreurs** : branche sans ticket lié (`stopped`).
@@ -1258,6 +1396,19 @@ Règles de base (une règle = un identifiant `KX-SEC-NNN`, une phrase, une faço
 - un fichier téléversé ou une entrée utilisateur est validé avant usage.
 
 La liste est un point de départ. Elle est livrée comme données, et le dépôt peut la compléter dans `review/security/`.
+
+Couches de règles de sécurité (D115) :
+
+| Couche | Livrée par | Contenu | Identifiants |
+|---|---|---|---|
+| Bon sens | `kx-factory` | Règles de base ci-dessus, sans rien de propre à un langage ou à un framework | `KX-SEC-NNN` |
+| Stack | Kit de stack, par exemple `kx-kit-netfx` | La même intention, traduite pour la stack : API à éviter, réglage sûr par défaut, motif de code risqué. Une règle de kit peut préciser une règle de base, jamais l'affaiblir | `KX-SEC-<KIT>-NNN`, avec le lien vers la règle de base précisée |
+| Dépôt | `review/security/` du bundle | Règles propres au produit, écrites et relues par l'équipe | Libres, préfixe du profil |
+| Référentiels | `kx-compliance`, extension commerciale | Exigences de référentiels de sécurité et de conformité | Ceux du référentiel |
+
+- `review` et `security-review` chargent les couches dans cet ordre ; un constat cite la règle la plus précise et sa règle de base.
+- Les règles sont des données, sans code ; un kit ou un dépôt ne peut pas en retirer une de la couche « bon sens », seulement la déclarer non applicable avec une raison, visible dans le constat.
+- La couche « bon sens » ne recopie aucun texte tiers : elle cite les identifiants OWASP et renvoie aux sources.
 
 Dépendances tierces (D87) :
 
@@ -1343,8 +1494,13 @@ Faits vérifiés (A44, A45, A46) :
 
 - **Déclencheur** : un ticket en `test`, après fusion.
 - **Entrées** : identifiant du ticket ; environnement de test.
-- **Étapes** : pour chaque critère `AC-n`, exécute la vérification prévue ; note réussi, échoué ou non vérifiable, avec la preuve ; écrit le rapport ; passe le ticket en `verified` si tout est réussi.
-- **Sorties** : rapport de vérification dans le dossier du ticket ; commentaire sur le ticket ; ticket en `verified` ou laissé en `test`.
+- **Étapes** : confronte ce qui a été demandé à ce qui a été fait (D118) :
+  1. contrôle que les artefacts figés à `ready` (`ticket.md`, `discovery/examples/`, `features/`) ont toujours l'empreinte notée dans `manifest.yml` ; sinon, `stopped` ;
+  2. pour chaque critère `AC-n`, exécute la vérification prévue, et rejoue les exemples de `discovery/examples/` qui s'y rattachent ; note réussi, échoué ou non vérifiable, avec la preuve dans `verify/evidence/` ;
+  3. remplit la **matrice de traçabilité** : critère → sources → scénarios et exemples → tâches du plan → fichiers modifiés par la PR → preuve ;
+  4. signale les **écarts de périmètre**, sans les juger : un fichier modifié qu'aucune tâche ne couvre, une tâche qu'aucun critère ne justifie, un écart au plan absent de `build/journal.md`, une question de `open-questions.md` restée sans réponse. Un écart est un constat (`found_at: test`) ; l'humain décide s'il bloque ;
+  5. écrit `verify/report.md` ; passe le ticket en `verified` si tous les critères sont réussis.
+- **Sorties** : `verify/report.md` et `verify/evidence/` dans le dossier du ticket ; commentaire sur le ticket, avec la matrice ; ticket en `verified` ou laissé en `test`.
 - **Opérations** : `ticket.get`, `ticket.comment`, `ticket.apply`.
 - **Contrôles** : « non vérifiable » n'est jamais « réussi » ; Galileo n'est pas l'agent qui a codé ; identité membre de `testers` ou de `agents`.
 - **Erreurs** : critère échoué (`stopped`, ticket laissé en `test`, retour vers le développeur à décider par l'humain).
@@ -2240,7 +2396,7 @@ Faits vérifiés (A56, A57, A58) :
 - Un changement de comportement d'agent n'est jamais un correctif s'il change le score ou le coût des evals au-delà du seuil (§8.2).
 - Un référentiel est **MAJEUR** quand une exigence change de sens ou disparaît, **MINEUR** quand une exigence s'ajoute ; il porte aussi l'édition et la date du texte qu'il suit (spécification de `kx-compliance`).
 
-**2. Schémas versionnés à part.** Chaque format partagé a un identifiant : `kx.profile/N`, `kx.lock/N`, `kx.expert/N` (contrat d'expert), `kx.finding/N` (constats d'agent), `kx.framework/N` (référentiel). Chaque plugin déclare, dans sa documentation et dans un fichier lu par `doctor`, les schémas qu'il lit et écrit. Un plugin refuse un schéma plus récent que ceux qu'il connaît.
+**2. Schémas versionnés à part.** Chaque format partagé a un identifiant : `kx.profile/N`, `kx.lock/N`, `kx.expert/N` (contrat d'expert), `kx.finding/N` (constats d'agent ; champ obligatoire `found_at` : `spec`, `plan`, `code`, `pr`, `test`, `release` ou `prod`, D113), `kx.framework/N` (référentiel). Chaque plugin déclare, dans sa documentation et dans un fichier lu par `doctor`, les schémas qu'il lit et écrit. Un plugin refuse un schéma plus récent que ceux qu'il connaît.
 
 **3. Publication.**
 
@@ -2380,6 +2536,9 @@ Règles :
 - A67. Gemini 4 Neon in Google Antigravity — https://antigravity.google/blog/gemini-4-neon-in-google-antigravity/
 - A68. Adding repository custom instructions for GitHub Copilot (GitHub Docs) — https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions
 - A69. About GitHub Copilot code review (GitHub Docs) — https://docs.github.com/en/copilot/concepts/agents/code-review
+- A70. Get started with custom connectors using remote MCP (Claude Help Center) — https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp
+- A71. Provision and manage skills for your organization (Claude Help Center) — https://support.claude.com/en/articles/13119606-provision-and-manage-skills-for-your-organization
+- A72. GitHub MCP Server, remote server and host integration (GitHub) — https://github.com/github/github-mcp-server
 
 
 ## Annexe E — Nommage et langue (référence unique)
