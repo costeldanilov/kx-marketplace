@@ -44,6 +44,14 @@ Le plugin ne contient rien de propre à un projet. Tout le contexte du dépôt c
 
 Lisez [CONTRIBUTING.md](CONTRIBUTING.md). Chaque commit porte une ligne `Signed-off-by` (DCO).
 
+## Dans la communauté
+
+D'autres développeurs partagent en open source leur travail sur Claude Code. Nous vous invitons à aller le découvrir, par exemple :
+
+- [Florian Bruniaux](https://github.com/FlorianBruniaux) : un guide complet de Claude Code, un marketplace de plugins et un tableau de bord des sessions.
+
+Ces travaux sont cités pour la communauté, pas repris : ce dépôt n'en contient aucune copie, et n'en accepte pas (voir [CONTRIBUTING.md](CONTRIBUTING.md)).
+
 ## Sécurité
 
 Ne signalez pas une faille dans une issue publique. Lisez [SECURITY.md](SECURITY.md).

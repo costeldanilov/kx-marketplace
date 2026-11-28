@@ -2497,7 +2497,7 @@ Règles :
 - A28. Hooks reference — https://code.claude.com/docs/en/hooks
 - A29. Create a marketplace — https://code.claude.com/docs/en/plugin-marketplaces
 - A30. Host and maintain a marketplace — https://code.claude.com/docs/en/plugins/host-marketplace
-- A31. Claude Code Plugins (F. Bruniaux) — https://github.com/FlorianBruniaux/claude-code-plugins
+- A31. Florian Bruniaux, contributeur de la communauté Claude Code (guide, plugins, tableau de bord des sessions) — https://github.com/FlorianBruniaux — cité comme référence à découvrir ; rien n'en est repris (annexe D)
 - A32. Dev10x — https://pypi.org/project/Dev10x/
 - A33. Azure MCP Server, outils Monitor — https://learn.microsoft.com/en-us/azure/developer/azure-mcp-server/tools/monitor
 - A34. 10x-Team — https://github.com/Jaan-Mustafa/10x-Team
