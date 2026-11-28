@@ -116,7 +116,7 @@ Restent à fixer, sans bloquer le démarrage :
 | Poids du score de risque (D6) ; points et seuils du poids du ticket (D93) | §3.4, §3.6 | Mesurés sur les premiers tickets |
 | Budgets par ticket, par exécution et par jour | §8.6 | Mesurés sur les premiers tickets |
 
-Les points marqués **[NV]** (86 dans ce document) se vérifient pendant la réalisation, chacun avant d'écrire le code qui en dépend.
+Les points marqués **[NV]** (88 dans ce document) se vérifient pendant la réalisation, chacun avant d'écrire le code qui en dépend.
 
 
 ## 2. Contrat avec le dépôt cible
@@ -299,6 +299,7 @@ repository:
   default_branch: main
   protected_branches: [main, "release/*"]
   agent_branch_prefix: agents/
+  spec_branch_prefix: spec/        # dossier du ticket avant ready (D120)
   ticket_folder: work/{ticket}
 
 forge:
@@ -333,6 +334,8 @@ tracker:
     testers: <équipe>
     agents: <équipe ou App>
     adr_approvers: <équipe>         # décident des ADR (D90)
+    tech_referents: <équipe>        # sollicités pendant la spécification (D119)
+    ux_approvers: <équipe>          # valident maquettes et parcours (D119)
 
 review:
   pr_size: { max_files: 30, max_lines: 600 }     # exemples, à fixer par dépôt
@@ -1120,8 +1123,69 @@ Méthode du dialogue (D71), idées reprises de « grill-me » (les travaux étud
 | 2. Concevoir et planifier | Développeur, ou Neo | Après `ticket start`, dans `doing` | `design.md` et `plan.md` dans le dossier du ticket | `ticket plan`, ou superpowers |
 
 - **Vocabulaire** : l'état de tracker nommé « Design » désigne la spécification, pas la conception technique. Pour éviter la confusion, le rôle d'état s'appelle `refinement` dans le profil ; le nom réel reste libre (D73).
-- **La phase 1 se fait rarement dans un terminal.** Un PO ou un chef de projet travaille plutôt dans l'application Claude (web ou bureau). `ticket specify` est une skill portable : elle doit fonctionner là, avec les connecteurs de l'application (messagerie, Teams, documents). **[NV]** Chargement d'une skill de plugin dans l'application Claude ; connecteur Azure DevOps disponible. Repli : le Team Lead lance `ticket specify` en session, avec le PO.
+- **La phase 1 se fait rarement dans un terminal.** Un PO ou un chef de projet travaille plutôt dans l'application Claude (web ou bureau). `ticket specify` est une skill portable : elle doit fonctionner là, avec les connecteurs de l'application (messagerie, Teams, documents, forge). Mise en place : « Spécifier à plusieurs, depuis l'application Claude » ci-dessous (D121). Repli : le Team Lead lance `ticket specify` en session, avec le PO.
 - **La phase 2 relève du développeur.** Elle précède presque toujours le code.
+
+#### Spécifier à plusieurs, depuis l'application Claude (D119, D120, D121)
+
+La spécification est menée par le PO, mais elle n'est pas son travail seul. Chaque rôle y apporte son regard quand le ticket le concerne, par écrit, dans le dossier du ticket (§2.2.1). C'est l'idée des « trois amis » de BDD (métier, technique, test), rendue asynchrone : on ne se réunit que pour une contradiction que l'écrit ne règle pas.
+
+**Qui intervient (D119).**
+
+| Rôle | Quand la skill le sollicite | Ce qu'il apporte | Où cela va |
+|---|---|---|---|
+| PO, chef de projet | Toujours ; il mène | Sources, réponses aux questions, validation de chaque critère | `ticket.md`, `discovery/` |
+| Référent technique | Zone sensible touchée, décision d'architecture probable, ou classe L ou plus | Faisabilité, découpage, risques, valeur proposée de `sensitive` | `discovery/decisions.md`, `open-questions.md` |
+| UI/UX | Le ticket touche un écran ou un parcours | Parcours, maquette, états vide, erreur et chargement, critères d'accessibilité | `discovery/models/`, critères `AC-n` proposés |
+| Développeur | Avant `ready`, pour les classes M et plus | Pré-lecture : ce qui est ambigu ou irréalisable | `discovery/open-questions.md` |
+
+- La skill nomme le rôle sollicité et la question posée ; elle publie la demande en commentaire du ticket, avec un lien vers l'artefact concerné. **[À DÉCIDER]** mention d'une personne (`@`) ou d'une équipe, réglée dans le profil.
+- Seul le PO écrit et valide les critères (D33) ; les autres rôles proposent. Une réponse retenue est notée avec le nom de qui a tranché.
+- **Validations attendues.** Le profil dit quel rôle valide quel artefact, selon le type de ticket :
+
+```yaml
+specification:
+  validations:
+    - artifact: discovery/models/ui/*      # maquettes et parcours
+      by: ux_approvers
+    - artifact: discovery/decisions.md
+      by: tech_referents
+      when: [sensitive, class>=L]
+    - artifact: ticket.md
+      by: spec_approvers
+```
+
+- `manifest.yml` note, pour chaque artefact, qui l'a validé et quand. `ticket specify` refuse de proposer `ready` tant qu'une validation attendue manque ; le passage à `ready` reste le geste du PO.
+
+**Où vit le dossier avant `ready` (D120).** Sur une branche `spec/<id>` du dépôt, écrite par la skill au moyen de l'API de la forge. Le PO ne voit ni git ni la branche : la skill lui dit seulement que le dossier est enregistré, avec un lien.
+
+1. `ticket specify` crée `spec/<id>` depuis la branche par défaut au premier enregistrement, puis ajoute un commit à chaque enregistrement validé par le PO. Les commits portent l'identité de la personne connectée.
+2. Au passage à `ready`, l'empreinte (SHA) du dernier commit de `spec/<id>` est notée dans le ticket et dans `manifest.yml`.
+3. `ticket start` crée la branche de travail depuis la branche par défaut à jour, puis y fusionne `spec/<id>` à ce SHA exact. La PR du ticket contient donc le dossier de découverte et le code : la relecture voit le demandé à côté du fait.
+4. `criteria-locked` compare les artefacts figés de la PR au SHA noté. `spec/<id>` est supprimée après la fusion de la PR.
+
+- Le préfixe `spec/` se règle dans le profil (`repository.spec_branch_prefix`). Le ruleset de la branche par défaut s'applique : aucune écriture directe, même par l'identité du PO.
+- Les données personnelles restent hors de la branche (§2.2.1, règle 6) : une branche poussée est aussi difficile à purger qu'un commit fusionné.
+
+**Le poste du PO (D121).** L'application Claude, sur le web ou le bureau, jamais un terminal.
+
+| Élément | Mise en place | Statut |
+|---|---|---|
+| Skills `kx-` | Sur un plan Team ou Enterprise, un propriétaire de l'organisation les met à disposition dans **Organization settings > Plugins & skills**, pour tous ou pour un groupe ; sinon, chacun téléverse la skill dans **Customize > Skills** (A71) | **[V]** pour la mise à disposition ; **[NV]** comportement de `ticket specify` dans l'application (lecture des fichiers de référence, appels de connecteurs depuis une skill) |
+| Connecteur de la forge | Connecteur personnalisé vers le serveur MCP distant de la forge (§2.13 pour GitHub) ; chaque utilisateur se connecte avec son propre compte (A70) | Voir ci-dessous |
+| Connecteurs des sources | Messagerie, Teams, documents, outil de maquette : ceux de l'application | Selon l'outil |
+| Droits | Ceux du compte du PO : lecture du dépôt, écriture des issues et du Project, création de branches `spec/` | Le ruleset protège la branche par défaut |
+
+Connecteur GitHub, depuis l'application Claude :
+
+- **[V]** Un connecteur personnalisé est un serveur MCP distant, ajouté par son URL. Claude s'y connecte depuis l'infrastructure d'Anthropic, pas depuis le poste de l'utilisateur. Sur Team et Enterprise, seul un propriétaire l'ajoute pour l'organisation ; chaque membre s'y connecte ensuite avec son compte (A70).
+- **[V]** Pour un serveur qui exige un client OAuth enregistré à l'avance, l'option « Use your own OAuth client » accepte un client ID et un secret ; l'adresse de retour à déclarer chez le fournisseur est `https://claude.ai/api/mcp/auth_callback` (A70).
+- **[V]** Le serveur MCP distant de GitHub (`https://api.githubcopilot.com/mcp/`) ne prend pas en charge l'enregistrement dynamique de client (A72). Il faut donc enregistrer une OAuth App ou une GitHub App dans le compte ou l'organisation, avec l'adresse de retour ci-dessus.
+- Recommandation : une **GitHub App** plutôt qu'une OAuth App, installée sur le seul dépôt, avec les permissions minimales : *Contents* en écriture (branches `spec/`), *Issues* en écriture, *Projects* en écriture pour `Status`. Une OAuth App avec la portée `repo` donne accès à tous les dépôts du compte.
+- **[NV]** Connexion effective de l'application Claude au serveur distant de GitHub avec un client propre (la documentation d'installation de GitHub disait l'OAuth non pris en charge par Claude Desktop pour ce serveur ; la documentation de Claude décrit désormais l'option). **[NV]** Outils exposés pour écrire plusieurs fichiers en un commit sur une branche, et pour modifier un champ de Project. Repli : le Team Lead enregistre le dossier depuis Claude Code, avec le PO.
+- Dans l'application, chaque outil d'écriture du connecteur reste en « demander avant » pour le PO, sauf décision contraire de l'organisation.
+
+**Premiers pas du PO.** Une séance guidée sur un vrai petit ticket, avec le référent technique : connexion des connecteurs, un dialogue de spécification complet, la lecture du dossier produit, le passage à `ready`. **[À DÉCIDER]** une skill `onboard` par rôle (PO, référent technique, UX), qui vérifie les connecteurs et déroule un ticket d'essai sur un dépôt d'exemple.
 
 #### `ticket plan` — conception et plan (D74)
 
@@ -1234,7 +1298,7 @@ Règles :
 - **Étapes** : lit le ticket ; vérifie les préconditions ; pose le verrou du ticket ; crée la branche (mode pilote : dans le checkout du développeur ; mode agent : dans un worktree hors du dépôt, spécification de `kx-guild`) ; crée le dossier du ticket ; y enregistre la révision et l'empreinte des critères ; passe le ticket en `doing`.
 - **Sorties** : branche `<préfixe>/<id>-<sujet>` ; dossier du ticket ; ticket en `doing`.
 - **Opérations** : `ticket.get`, `ticket.apply`.
-- **Contrôles** : état `ready` ; champs obligatoires présents ; branche créée depuis la branche par défaut à jour ; préfixe d'agent si l'identité est membre de `agents`.
+- **Contrôles** : état `ready` ; champs obligatoires présents ; branche créée depuis la branche par défaut à jour ; si le ticket a une branche `spec/<id>`, elle est fusionnée au SHA noté à `ready`, et seulement à ce SHA (D120) ; préfixe d'agent si l'identité est membre de `agents`.
 - **Erreurs** : ticket modifié entre la lecture et l'écriture (`conflict`, relire) ; ticket déjà pris par une autre branche (`needs-human`).
 
 #### `submit`
@@ -2470,6 +2534,9 @@ Règles :
 - A67. Gemini 4 Neon in Google Antigravity — https://antigravity.google/blog/gemini-4-neon-in-google-antigravity/
 - A68. Adding repository custom instructions for GitHub Copilot (GitHub Docs) — https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions
 - A69. About GitHub Copilot code review (GitHub Docs) — https://docs.github.com/en/copilot/concepts/agents/code-review
+- A70. Get started with custom connectors using remote MCP (Claude Help Center) — https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp
+- A71. Provision and manage skills for your organization (Claude Help Center) — https://support.claude.com/en/articles/13119606-provision-and-manage-skills-for-your-organization
+- A72. GitHub MCP Server, remote server and host integration (GitHub) — https://github.com/github/github-mcp-server
 
 
 ## Annexe E — Nommage et langue (référence unique)
